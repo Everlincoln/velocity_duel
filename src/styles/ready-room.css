@@ -1,0 +1,104 @@
+/* Ready room styles - responsive, game-ready layout */
+:root{
+  --bg: rgba(2,6,23,0.6);
+  --card: rgba(255,255,255,0.04);
+  --muted: rgba(255,255,255,0.75);
+  --accent: #7bd389;
+  --accent-2: #ff6b6b;
+}
+
+.ready-screen{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+}
+
+.ready-shell{
+  width:100%;
+  max-width:1100px;
+}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.topbar .button{flex:0}
+.topbar-mark{color:var(--muted);font-weight:700}
+
+.ready-card{
+  background:var(--card);
+  padding: clamp(20px, 3.6vw, 44px);
+  border-radius:14px;
+  text-align:center;
+  box-shadow:0 10px 40px rgba(2,6,23,0.6);
+  color:#fff;
+}
+
+.ready-title{font-size:clamp(1.25rem,3.6vw,1.8rem);margin:0 0 18px}
+
+.versus-area{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  flex-wrap:wrap;
+  margin:18px 0 26px;
+}
+
+.player-side{
+  flex:1 1 200px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+}
+
+.player-img{
+  width:clamp(108px,18vw,160px);
+  height:clamp(108px,18vw,160px);
+  object-fit:cover;
+  border-radius:50%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02));
+  padding:6px;
+  box-shadow:0 8px 26px rgba(0,0,0,0.45) inset, 0 8px 30px rgba(2,6,23,0.5);
+}
+
+.player-side strong{font-size:1rem}
+
+.ready-pill{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;font-size:0.9rem}
+.ready-pill.on{background:var(--accent);color:#042414}
+.ready-pill.off{background:rgba(255,255,255,0.06);color:var(--muted)}
+
+.countdown{
+  flex:0 0 160px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+.countdown span{color:var(--muted);font-size:0.9rem}
+.count-number{
+  font-weight:900;
+  font-size:clamp(2rem,8vw,4rem);
+  color:var(--accent-2);
+  background:rgba(255,255,255,0.02);
+  padding:8px 18px;
+  border-radius:12px;
+  min-width:86px;
+}
+
+.button-primary{
+  -webkit-appearance:none;appearance:none;border:none;background:var(--accent-2);color:#fff;padding:12px 22px;border-radius:12px;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 10px 30px rgba(255,107,107,0.14);
+}
+
+@media (max-width:680px){
+  .versus-area{flex-direction:column;align-items:center}
+  .countdown{order:2}
+  .player-side{order:1}
+  .player-side:last-child{order:3}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .button-primary{transition:none}
+}
