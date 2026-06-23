@@ -1,36 +1,36 @@
 import type { Page } from "../App";
 
 type Props = {
+  reactionTimeMs: number | null;
   setCurrentPage: (page: Page) => void;
 };
 
-function ResultPage({ setCurrentPage }: Props) {
+function ResultPage({ reactionTimeMs, setCurrentPage }: Props) {
   return (
     <main className="screen">
       <section className="shell stack-gap">
         <article className="card card-lilac center-card">
-          <p className="kicker">Result Screen</p>
-          <div className="winner-badge">Winner!</div>
-          <h2 className="section-title">Banana Rocket wins</h2>
+          <p className="kicker">Single Player Test Result</p>
+          <div className="winner-badge">FIRED!</div>
+          <h2 className="section-title">Reaction captured</h2>
 
           <div className="results-grid">
             <div className="result-chip">
-              <strong>0.82s</strong>
+              <strong>{reactionTimeMs ?? "--"} ms</strong>
               <span>Reaction time</span>
             </div>
             <div className="result-chip">
-              <strong>1 round</strong>
-              <span>Perfect for party pacing</span>
+              <strong>1 shot</strong>
+              <span>Assembly to fire flow works</span>
             </div>
           </div>
 
           <p className="section-text">
-            Celebrate quickly, then offer a big replay button so the next round starts without
-            friction.
+            This is the single-player firing test. Next we can layer the same flow into the two-player duel.
           </p>
 
           <div className="action-row center-actions">
-            <button className="button button-coral" onClick={() => setCurrentPage("ready")}>
+            <button className="button button-coral" onClick={() => setCurrentPage("assembly")}>
               Play Again
             </button>
             <button className="button button-cream" onClick={() => setCurrentPage("home")}>

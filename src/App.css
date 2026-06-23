@@ -1,3 +1,82 @@
 .app-shell {
   min-height: 100vh;
 }
+
+.rotate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.22), transparent 24%),
+    linear-gradient(180deg, #79c8ff 0%, #b9e8ff 58%, #fff6e6 100%);
+}
+
+.rotate-overlay-card {
+  width: min(100%, 420px);
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 28px 24px;
+  border: 3px solid #2e4367;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 0 rgba(46, 67, 103, 0.14);
+  text-align: center;
+}
+
+.rotate-phone-icon {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+}
+
+.rotate-phone-device {
+  width: 52px;
+  height: 84px;
+  border: 4px solid #2e4367;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+  box-shadow: 0 6px 0 rgba(46, 67, 103, 0.12);
+  animation: rotate-device 1.8s ease-in-out infinite;
+}
+
+.rotate-phone-arrow {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  color: #ffb938;
+  font-size: 2rem;
+  font-weight: 900;
+  text-shadow: 0 3px 0 rgba(46, 67, 103, 0.15);
+}
+
+.rotate-overlay-title {
+  margin: 0;
+  color: #203f74;
+  font-size: clamp(1.9rem, 6vw, 2.8rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.rotate-overlay-text {
+  margin: 0;
+  color: #5a7198;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+@keyframes rotate-device {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  35%,
+  65% {
+    transform: rotate(90deg);
+  }
+}

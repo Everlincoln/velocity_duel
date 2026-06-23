@@ -1,421 +1,251 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Page } from "../App";
+import WeaponCanvas from "../components/WeaponCanvas";
+import {
+  readSavedWeaponLayout,
+  WEAPON_CANVAS_HEIGHT,
+  WEAPON_CANVAS_WIDTH,
+  type WeaponLayoutPreset,
+  type WeaponPartId,
+} from "../components/weaponCanvasConfig";
 
 type Props = {
   setCurrentPage: (page: Page) => void;
+  setReactionTimeMs: (value: number | null) => void;
 };
 
-type StepId = "core" | "barrel" | "rail" | "cell" | "charge" | "ready";
+type AssemblyStep = "magazine" | "slide" | "complete";
 
-type StepConfig = {
-  id: StepId;
-  title: string;
-  instruction: string;
-  comic: string;
-  hint: string;
-};
+const MAGAZINE_START = { x: 320, y: 690 };
+const SLIDE_START = { x: 1260, y: 250 };
+const MAGAZINE_SNAP_DISTANCE = 120;
+const SLIDE_SNAP_DISTANCE = 150;
 
-const steps: StepConfig[] = [
-  {
-    id: "core",
-    title: "Insert Core",
-    instruction: "Drag the glowing core into the center chamber.",
-    comic: "CLICK!",
-    hint: "Soft snap, blue glow, tiny vibration",
-  },
-  {
-    id: "barrel",
-    title: "Slide Barrel",
-    instruction: "Swipe the barrel left into the nose to lock it in.",
-    comic: "SNAP!",
-    hint: "Front section twists and sparks",
-  },
-  {
-    id: "rail",
-    title: "Lock Side Rail",
-    instruction: "Use two fingers on the lock pad. Desktop fallback: double tap.",
-    comic: "CLICK!",
-    hint: "Metal lock and quick shake",
-  },
-  {
-    id: "cell",
-    title: "Insert Energy Cell",
-    instruction: "Push the energy cell upward into the lower chamber.",
-    comic: "CHUNK!",
-    hint: "Energy starts flowing through the blaster",
-  },
-  {
-    id: "charge",
-    title: "Charge Weapon",
-    instruction: "Pull the charger down hard to power it up.",
-    comic: "K-CHAK!!",
-    hint: "Big recoil, flash, strong vibration",
-  },
-  {
-    id: "ready",
-    title: "Ready to Fire!!",
-    instruction: "Blaster primed. Moving straight into the fire phase...",
-    comic: "READY!!",
-    hint: "No buttons. The duel launches automatically.",
-  },
-];
+function buildGameplayLayout(
+  targetLayout: WeaponLayoutPreset,
+  installedParts: WeaponPartId[],
+  partPositions: Partial<Record<WeaponPartId, { x: number; y: number }>>,
+) {
+  return {
+    ...targetLayout,
+    parts: {
+      ...targetLayout.parts,
+      weaponFrame: {
+        ...targetLayout.parts.weaponFrame,
+      },
+      weaponMagazine: {
+        ...targetLayout.parts.weaponMagazine,
+        ...(installedParts.includes("weaponMagazine")
+          ? {}
+          : (partPositions.weaponMagazine ?? MAGAZINE_START)),
+      },
+      weaponSlide: {
+        ...targetLayout.parts.weaponSlide,
+        ...(installedParts.includes("weaponSlide") ? {} : (partPositions.weaponSlide ?? SLIDE_START)),
+      },
+    },
+  };
+}
 
-function WeaponAssemblyPage({ setCurrentPage }: Props) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [feedback, setFeedback] = useState("");
-  const [screenShake, setScreenShake] = useState(false);
-  const [coreDropped, setCoreDropped] = useState(false);
-  const [barrelLocked, setBarrelLocked] = useState(false);
-  const [railLocked, setRailLocked] = useState(false);
-  const [cellLocked, setCellLocked] = useState(false);
-  const [chargeLocked, setChargeLocked] = useState(false);
-  const [coreDrag, setCoreDrag] = useState({ x: -180, y: 110 });
-  const [barrelDrag, setBarrelDrag] = useState(180);
-  const [cellDrag, setCellDrag] = useState(140);
-  const [chargeDrag, setChargeDrag] = useState(0);
-  const [pressingPointers, setPressingPointers] = useState<number[]>([]);
+function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
+  const [debugMode, setDebugMode] = useState(true);
+  const [targetLayout] = useState(() => readSavedWeaponLayout());
+  const [step, setStep] = useState<AssemblyStep>("magazine");
+  const [installedParts, setInstalledParts] = useState<WeaponPartId[]>([]);
+  const [draggingPartId, setDraggingPartId] = useState<WeaponPartId | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [partPositions, setPartPositions] = useState<Partial<Record<WeaponPartId, { x: number; y: number }>>>({
+    weaponMagazine: MAGAZINE_START,
+    weaponSlide: SLIDE_START,
+  });
 
-  const railTimerRef = useRef<number | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const activePartId: WeaponPartId | null =
+    step === "magazine" ? "weaponMagazine" : step === "slide" ? "weaponSlide" : null;
 
-  const currentStep = steps[stepIndex];
-  const isReadyState = currentStep.id === "ready";
-  const buildStepCount = steps.length - 1;
-  const activeBuildStep = useMemo(() => Math.min(stepIndex + 1, buildStepCount), [buildStepCount, stepIndex]);
-  const progressPips = useMemo(
-    () => Array.from({ length: buildStepCount }, (_, index) => index < activeBuildStep),
-    [activeBuildStep, buildStepCount],
+  const layout = useMemo(
+    () => buildGameplayLayout(targetLayout, installedParts, partPositions),
+    [installedParts, partPositions, targetLayout],
   );
 
-  const vibrate = (pattern: number | number[]) => {
-    if ("vibrate" in navigator) {
-      navigator.vibrate(pattern);
+  const visiblePartIds = useMemo(() => {
+    if (step === "magazine") {
+      return ["weaponFrame", "weaponMagazine"] as WeaponPartId[];
     }
-  };
-
-  const playTone = (frequency: number, duration: number, type: OscillatorType) => {
-    const AudioCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtor) {
-      return;
+    if (step === "slide") {
+      return ["weaponFrame", "weaponMagazine", "weaponSlide"] as WeaponPartId[];
     }
+    return ["weaponFrame", "weaponMagazine", "weaponSlide"] as WeaponPartId[];
+  }, [step]);
 
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioCtor();
-    }
-
-    const context = audioContextRef.current;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-
-    oscillator.type = type;
-    oscillator.frequency.value = frequency;
-    gain.gain.value = 0.0001;
-    gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
-
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + duration);
-  };
-
-  const playMechanicalCue = (id: StepId) => {
-    if (id === "core") {
-      playTone(820, 0.08, "square");
-      playTone(560, 0.12, "triangle");
-    }
-    if (id === "barrel") {
-      playTone(300, 0.1, "sawtooth");
-      playTone(640, 0.15, "square");
-    }
-    if (id === "rail") {
-      playTone(700, 0.08, "triangle");
-      playTone(900, 0.05, "square");
-    }
-    if (id === "cell") {
-      playTone(240, 0.14, "square");
-      playTone(460, 0.18, "triangle");
-    }
-    if (id === "charge") {
-      playTone(180, 0.18, "sawtooth");
-      playTone(120, 0.24, "square");
-      playTone(800, 0.1, "triangle");
-    }
-  };
-
-  const triggerStepSuccess = (id: StepId, nextIndex: number) => {
-    const step = steps.find((item) => item.id === id);
-    setFeedback(step?.comic ?? "");
-    setScreenShake(true);
-    playMechanicalCue(id);
-
-    if (id === "core") vibrate(25);
-    if (id === "barrel") vibrate([20, 30, 30]);
-    if (id === "rail") vibrate(30);
-    if (id === "cell") vibrate([45, 40, 45]);
-    if (id === "charge") vibrate([80, 40, 90, 40, 120]);
-
-    window.setTimeout(() => setScreenShake(false), 260);
-    window.setTimeout(() => setFeedback(""), 780);
-    window.setTimeout(() => setStepIndex(nextIndex), 560);
-  };
+  const instruction =
+    step === "magazine"
+      ? "Drag the magazine close to the grip and it will snap in automatically."
+      : step === "slide"
+        ? "Slide the top part close to its slot and it will lock into place."
+        : "READY TO FIRE";
 
   useEffect(() => {
-    if (!isReadyState) {
+    if (step !== "complete") {
       return;
     }
 
-    const timer = window.setTimeout(() => {
+    setReactionTimeMs(null);
+    const timeout = window.setTimeout(() => {
       setCurrentPage("fire");
-    }, 1500);
+    }, 1400);
 
-    return () => window.clearTimeout(timer);
-  }, [isReadyState, setCurrentPage]);
+    return () => window.clearTimeout(timeout);
+  }, [setCurrentPage, setReactionTimeMs, step]);
 
-  useEffect(() => {
-    return () => {
-      if (railTimerRef.current) {
-        window.clearTimeout(railTimerRef.current);
-      }
-      audioContextRef.current?.close();
+  const updatePartPosition = (partId: WeaponPartId, x: number, y: number) => {
+    setPartPositions((current) => ({
+      ...current,
+      [partId]: {
+        x: Number(x.toFixed(2)),
+        y: Number(y.toFixed(2)),
+      },
+    }));
+  };
+
+  const toLogicalPoint = (event: ReactPointerEvent<HTMLDivElement | HTMLButtonElement>) => {
+    const currentTarget = event.currentTarget as HTMLElement;
+    const stage =
+      (currentTarget.closest(".weapon-canvas-stage") as HTMLDivElement | null) ??
+      (currentTarget.querySelector(".weapon-canvas-stage") as HTMLDivElement | null);
+    if (!stage) {
+      return null;
+    }
+
+    const rect = stage.getBoundingClientRect();
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * WEAPON_CANVAS_WIDTH,
+      y: ((event.clientY - rect.top) / rect.height) * WEAPON_CANVAS_HEIGHT,
     };
-  }, []);
-
-  const handleCorePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (currentStep.id !== "core") {
-      return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left - rect.width / 2;
-    const y = event.clientY - rect.top - rect.height / 2;
-    setCoreDrag({ x, y });
   };
 
-  const handleCoreRelease = () => {
-    if (currentStep.id !== "core" || coreDropped) {
+  const completeStep = (partId: WeaponPartId) => {
+    const targetPart = targetLayout.parts[partId];
+    updatePartPosition(partId, targetPart.x, targetPart.y);
+    setInstalledParts((current) => (current.includes(partId) ? current : [...current, partId]));
+    setDraggingPartId(null);
+
+    if (partId === "weaponMagazine") {
+      setStep("slide");
       return;
     }
 
-    const nearCenter = Math.abs(coreDrag.x) < 58 && Math.abs(coreDrag.y) < 58;
-    if (!nearCenter) {
-      setCoreDrag({ x: -180, y: 110 });
-      return;
+    if (partId === "weaponSlide") {
+      setStep("complete");
     }
-
-    setCoreDropped(true);
-    setCoreDrag({ x: 0, y: 0 });
-    triggerStepSuccess("core", 1);
   };
 
-  const handleBarrelPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (currentStep.id !== "barrel") {
+  const maybeSnapPart = (partId: WeaponPartId, x: number, y: number) => {
+    const target = targetLayout.parts[partId];
+    const dx = x - target.x;
+    const dy = y - target.y;
+    const distance = Math.hypot(dx, dy);
+    const threshold = partId === "weaponMagazine" ? MAGAZINE_SNAP_DISTANCE : SLIDE_SNAP_DISTANCE;
+
+    if (distance <= threshold) {
+      completeStep(partId);
+      return true;
+    }
+
+    return false;
+  };
+
+  const handlePartPointerDown = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (partId !== activePartId) {
       return;
     }
+
+    const point = toLogicalPoint(event);
+    if (!point) {
+      return;
+    }
+
+    const current = layout.parts[partId];
+    setDraggingPartId(partId);
+    setDragOffset({
+      x: point.x - current.x,
+      y: point.y - current.y,
+    });
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handleBarrelPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (currentStep.id !== "barrel" || barrelLocked || (event.buttons === 0 && event.pointerType !== "touch")) {
+  const handleCanvasPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingPartId) {
       return;
     }
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const progress = Math.max(0, Math.min(1, 1 - (event.clientX - rect.left) / rect.width));
-    setBarrelDrag(180 - progress * 180);
-
-    if (progress > 0.82) {
-      setBarrelLocked(true);
-      setBarrelDrag(0);
-      triggerStepSuccess("barrel", 2);
-    }
-  };
-
-  const handleRailPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (currentStep.id !== "rail" || railLocked) {
+    const point = toLogicalPoint(event);
+    if (!point) {
       return;
     }
 
-    const nextPointers = Array.from(new Set([...pressingPointers, event.pointerId]));
-    setPressingPointers(nextPointers);
-
-    if (nextPointers.length >= 2 && railTimerRef.current === null) {
-      railTimerRef.current = window.setTimeout(() => {
-        setRailLocked(true);
-        setPressingPointers([]);
-        railTimerRef.current = null;
-        triggerStepSuccess("rail", 3);
-      }, 260);
-    }
+    const nextX = point.x - dragOffset.x;
+    const nextY = point.y - dragOffset.y;
+    updatePartPosition(draggingPartId, nextX, nextY);
+    maybeSnapPart(draggingPartId, nextX, nextY);
   };
 
-  const clearRailPress = (pointerId?: number) => {
-    if (railTimerRef.current) {
-      window.clearTimeout(railTimerRef.current);
-      railTimerRef.current = null;
-    }
-    setPressingPointers((current) => current.filter((id) => id !== pointerId));
-  };
-
-  const handleRailDoubleClick = () => {
-    if (currentStep.id !== "rail" || railLocked) {
-      return;
-    }
-
-    setRailLocked(true);
-    triggerStepSuccess("rail", 3);
-  };
-
-  const handleCellPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (currentStep.id !== "cell" || cellLocked || (event.buttons === 0 && event.pointerType !== "touch")) {
-      return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const raw = 1 - (event.clientY - rect.top) / rect.height;
-    const progress = Math.max(0, Math.min(1, raw));
-    setCellDrag(140 - progress * 140);
-
-    if (progress > 0.78) {
-      setCellLocked(true);
-      setCellDrag(0);
-      triggerStepSuccess("cell", 4);
-    }
-  };
-
-  const handleChargePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (currentStep.id !== "charge" || chargeLocked || (event.buttons === 0 && event.pointerType !== "touch")) {
-      return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const raw = (event.clientY - rect.top) / rect.height;
-    const progress = Math.max(0, Math.min(1, raw));
-    setChargeDrag(progress * 120);
-
-    if (progress > 0.72) {
-      setChargeLocked(true);
-      setChargeDrag(120);
-      triggerStepSuccess("charge", 5);
-    }
+  const handleCanvasPointerUp = () => {
+    setDraggingPartId(null);
   };
 
   return (
-    <main className={`screen assembly-screen ${screenShake ? "assembly-screen-shake" : ""}`}>
-      <section className="assembly-shell">
-        <article className="assembly-stage">
-          <div className="assembly-topline">
-            <div className="assembly-step-header">
-              <span className="assembly-step-coin">{isReadyState ? "6" : activeBuildStep}</span>
-              <div className="assembly-step-copy">
-                <h1 className="assembly-title">{currentStep.title}</h1>
-                <p className="assembly-instruction">{currentStep.instruction}</p>
-              </div>
-            </div>
-
-            <div className="assembly-pips" aria-label={`Progress ${activeBuildStep} of ${buildStepCount}`}>
-              {progressPips.map((isActive, index) => (
-                <span
-                  key={`${currentStep.id}-pip-${index}`}
-                  className={`assembly-pip ${isActive ? "assembly-pip-active" : ""}`}
-                />
-              ))}
-            </div>
+    <main className="screen weapon-mini-screen">
+      <section className="layout-editor-shell">
+        <header className="layout-editor-topbar">
+          <div>
+            <p className="layout-editor-kicker">Gameplay Assembly</p>
+            <h1 className="layout-editor-title">
+              {step === "complete" ? "READY TO FIRE" : step === "magazine" ? "INSERT MAGAZINE" : "SLIDE TOP"}
+            </h1>
+            <p className="layout-editor-subtitle">{instruction}</p>
           </div>
 
-          <div className={`assembly-arena step-${currentStep.id} ${isReadyState ? "assembly-arena-ready" : ""}`}>
-            <div className="assembly-tech-frame" aria-hidden="true" />
-            <div className="assembly-feedback" aria-live="polite">
-              {feedback}
-            </div>
-
-            <div className={`toy-blaster ${coreDropped ? "toy-blaster-core-on" : ""} ${barrelLocked ? "toy-blaster-barrel-on" : ""} ${railLocked ? "toy-blaster-rail-on" : ""} ${cellLocked ? "toy-blaster-cell-on" : ""} ${chargeLocked ? "toy-blaster-charged" : ""}`}>
-              <div className="blaster-body" />
-              <div className="blaster-core-chamber">
-                <div className={`blaster-core-slot ${coreDropped ? "blaster-core-slot-lit" : ""}`} />
-              </div>
-              <div className={`blaster-barrel-shell ${barrelLocked ? "blaster-barrel-shell-locked" : ""}`} />
-              <div className={`blaster-rail-shell ${railLocked ? "blaster-rail-shell-locked" : ""}`} />
-              <div className={`blaster-cell-shell ${cellLocked ? "blaster-cell-shell-loaded" : ""}`} />
-              <div className={`blaster-charge-shell ${chargeLocked ? "blaster-charge-shell-pulled" : ""}`} />
-              <div className="blaster-handle" />
-              <div className="blaster-glow" />
-            </div>
-
-            {currentStep.id === "core" && (
-              <div className="gesture-layer" onPointerMove={handleCorePointerMove} onPointerUp={handleCoreRelease}>
-                <div className="gesture-target core-target">DROP CORE</div>
-                <div
-                  className="gesture-piece core-piece"
-                  style={{ transform: `translate(${coreDrag.x}px, ${coreDrag.y}px)` }}
-                >
-                  ENERGY CORE
-                </div>
-              </div>
-            )}
-
-            {currentStep.id === "barrel" && (
-              <div className="gesture-layer">
-                <div className="gesture-arrow">SWIPE LEFT</div>
-                <div className="swipe-track" onPointerDown={handleBarrelPointerDown} onPointerMove={handleBarrelPointerMove}>
-                  <div className="swipe-guide" />
-                  <div className="barrel-piece" style={{ transform: `translateX(${barrelDrag}px)` }}>
-                    BARREL
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentStep.id === "rail" && (
-              <div className="gesture-layer">
-                <div className="gesture-arrow">TWO-FINGER PRESS</div>
-                <div
-                  className={`press-pad ${pressingPointers.length > 0 ? "press-pad-active" : ""}`}
-                  onPointerDown={handleRailPointerDown}
-                  onPointerUp={(event) => clearRailPress(event.pointerId)}
-                  onPointerCancel={(event) => clearRailPress(event.pointerId)}
-                  onDoubleClick={handleRailDoubleClick}
-                >
-                  LOCK PAD
-                </div>
-              </div>
-            )}
-
-            {currentStep.id === "cell" && (
-              <div className="gesture-layer">
-                <div className="gesture-arrow">PUSH UP</div>
-                <div className="vertical-track" onPointerMove={handleCellPointerMove}>
-                  <div className="vertical-guide" />
-                  <div className="cell-piece" style={{ transform: `translateY(${cellDrag}px)` }}>
-                    ENERGY CELL
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentStep.id === "charge" && (
-              <div className="gesture-layer">
-                <div className="gesture-arrow">PULL DOWN HARD</div>
-                <div className="charge-track" onPointerMove={handleChargePointerMove}>
-                  <div className="charge-guide" />
-                  <div className="charge-grip" style={{ transform: `translateY(${chargeDrag}px)` }}>
-                    CHARGER
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {isReadyState && (
-              <div className="ready-fire-callout">
-                <div className="ready-fire-burst">READY TO FIRE!!</div>
-                <div className="ready-fire-sub">Auto launching into the firing phase...</div>
-              </div>
-            )}
+          <div className="layout-editor-actions">
+            <label className="layout-editor-toggle">
+              <input type="checkbox" checked={debugMode} onChange={(event) => setDebugMode(event.target.checked)} />
+              <span>Debug overlay</span>
+            </label>
+            <button className="button button-cream" onClick={() => setCurrentPage("home")}>
+              Back
+            </button>
           </div>
+        </header>
 
-          <div className="assembly-hint-pill">{currentStep.hint}</div>
-        </article>
+        <section
+          className="layout-editor-canvas-card"
+          onPointerMove={handleCanvasPointerMove}
+          onPointerUp={handleCanvasPointerUp}
+          onPointerCancel={handleCanvasPointerUp}
+        >
+          <WeaponCanvas
+            debug={debugMode}
+            layout={layout}
+            onPartPointerDown={handlePartPointerDown}
+            partClassName={step === "complete" ? "is-readonly" : ""}
+            selectedPartId={activePartId}
+            snapTarget={
+              debugMode && activePartId
+                ? {
+                    partId: activePartId,
+                    x: targetLayout.parts[activePartId].x,
+                    y: targetLayout.parts[activePartId].y,
+                  }
+                : null
+            }
+            visiblePartIds={visiblePartIds}
+          />
+        </section>
+
+        <div className="layout-editor-card">
+          <p className="layout-editor-panel-kicker">Loaded Snap Targets</p>
+          <pre className="layout-editor-json">{JSON.stringify(targetLayout, null, 2)}</pre>
+        </div>
       </section>
     </main>
   );

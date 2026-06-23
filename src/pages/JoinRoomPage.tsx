@@ -3,9 +3,10 @@ import type { Page } from "../App";
 type Props = {
   roomCode: string;
   setCurrentPage: (page: Page) => void;
+  startGame: (page: Page) => void;
 };
 
-function JoinRoomPage({ roomCode, setCurrentPage }: Props) {
+function JoinRoomPage({ roomCode, setCurrentPage, startGame }: Props) {
   return (
     <main className="screen">
       <section className="shell stack-gap">
@@ -36,7 +37,7 @@ function JoinRoomPage({ roomCode, setCurrentPage }: Props) {
             </div>
 
             <div className="action-row">
-              <button className="button button-blue" onClick={() => setCurrentPage("ready")}>
+              <button className="button button-blue" onClick={() => startGame("ready")}>
                 Join
               </button>
               <button className="button button-cream" onClick={() => setCurrentPage("create")}>

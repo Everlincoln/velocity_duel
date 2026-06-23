@@ -2,10 +2,10 @@ import type { Page } from "../App";
 
 type Props = {
   roomCode: string;
-  setCurrentPage: (page: Page) => void;
+  startGame: (page: Page) => void;
 };
 
-function CreateRoomPage({ roomCode, setCurrentPage }: Props) {
+function CreateRoomPage({ roomCode, startGame }: Props) {
   return (
     <main className="screen minimal-screen">
       <section className="minimal-shell">
@@ -21,7 +21,7 @@ function CreateRoomPage({ roomCode, setCurrentPage }: Props) {
 
           <button
             className="button button-start"
-            onClick={() => setCurrentPage("ready")}
+            onClick={() => startGame("ready")}
             aria-label="Start"
           >
             START
