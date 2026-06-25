@@ -176,7 +176,7 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
           </div>
         </section>
 
-        <div className="layout-editor-card">
+        <div className="layout-editor-card" style={{ display: "none" }}>
           <p className="layout-editor-panel-kicker">Motion Debug</p>
           <div className="motion-debug-panel">
             <div className="motion-debug-row">

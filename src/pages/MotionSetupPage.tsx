@@ -140,13 +140,13 @@ function MotionSetupPage({
           </div>
 
           {permissionResult ? (
-            <div className="motion-permission-result">
+            <div className="motion-permission-result" style={{ display: "none" }}>
               <strong>Permission result</strong>
               <code>{permissionResult}</code>
             </div>
           ) : null}
 
-          <div className="motion-debug-panel">
+          <div className="motion-debug-panel" style={{ display: "none" }}>
             <div className="motion-debug-row">
               <strong>typeof DeviceMotionEvent</strong>
               <code>{deviceMotionType}</code>

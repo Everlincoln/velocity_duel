@@ -239,7 +239,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
           </div>
 
           <div className="layout-editor-actions">
-            <label className="layout-editor-toggle">
+            <label className="layout-editor-toggle" style={{ display: "none" }}>
               <input type="checkbox" checked={debugMode} onChange={(event) => setDebugMode(event.target.checked)} />
               <span>Debug overlay</span>
             </label>
@@ -274,7 +274,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
           />
         </section>
 
-        <div className="layout-editor-card">
+        <div className="layout-editor-card" style={{ display: "none" }}>
           <p className="layout-editor-panel-kicker">Loaded Snap Targets</p>
           <pre className="layout-editor-json">{JSON.stringify(targetLayout, null, 2)}</pre>
         </div>
