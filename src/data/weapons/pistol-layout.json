@@ -1,0 +1,28 @@
+{
+  "layoutVersion": "pistol-v2",
+  "canvasWidth": 1600,
+  "canvasHeight": 900,
+  "parts": {
+    "weaponFrame": {
+      "x": 800,
+      "y": 450,
+      "scale": 1.25,
+      "rotation": 0,
+      "zIndex": 2
+    },
+    "weaponMagazine": {
+      "x": 921.15,
+      "y": 490.93,
+      "scale": 1.4,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    "weaponSlide": {
+      "x": 781.53,
+      "y": 296.28,
+      "scale": 1.33,
+      "rotation": 0,
+      "zIndex": 3
+    }
+  }
+}

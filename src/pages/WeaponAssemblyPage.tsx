@@ -3,7 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
 import {
-  readSavedWeaponLayout,
+  resolveWeaponLayout,
   WEAPON_CANVAS_HEIGHT,
   WEAPON_CANVAS_WIDTH,
   type WeaponLayoutPreset,
@@ -50,7 +50,8 @@ function buildGameplayLayout(
 
 function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   const [debugMode, setDebugMode] = useState(true);
-  const [targetLayout] = useState(() => readSavedWeaponLayout());
+  const [layoutResolution] = useState(() => resolveWeaponLayout());
+  const [targetLayout] = useState(() => layoutResolution.layout);
   const [step, setStep] = useState<AssemblyStep>("magazine");
   const [installedParts, setInstalledParts] = useState<WeaponPartId[]>([]);
   const [draggingPartId, setDraggingPartId] = useState<WeaponPartId | null>(null);
@@ -86,6 +87,16 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
         : "READY TO FIRE";
 
   useEffect(() => {
+    console.log("[WeaponAssembly] layout source", layoutResolution.source);
+    console.log("[WeaponAssembly] layout version", targetLayout.layoutVersion);
+    console.log("[WeaponAssembly] loaded layout JSON", JSON.stringify(targetLayout, null, 2));
+    console.log("[WeaponAssembly] canvas width/height", {
+      canvasWidth: targetLayout.canvasWidth,
+      canvasHeight: targetLayout.canvasHeight,
+    });
+  }, [layoutResolution.source, targetLayout]);
+
+  useEffect(() => {
     if (step !== "complete") {
       return;
     }
@@ -118,6 +129,14 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     }
 
     const rect = stage.getBoundingClientRect();
+    console.log("[WeaponAssembly] canvas scale", {
+      rectWidth: rect.width,
+      rectHeight: rect.height,
+      canvasWidth: WEAPON_CANVAS_WIDTH,
+      canvasHeight: WEAPON_CANVAS_HEIGHT,
+      scaleX: rect.width / WEAPON_CANVAS_WIDTH,
+      scaleY: rect.height / WEAPON_CANVAS_HEIGHT,
+    });
     return {
       x: ((event.clientX - rect.left) / rect.width) * WEAPON_CANVAS_WIDTH,
       y: ((event.clientY - rect.top) / rect.height) * WEAPON_CANVAS_HEIGHT,
@@ -146,8 +165,21 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     const dy = y - target.y;
     const distance = Math.hypot(dx, dy);
     const threshold = partId === "weaponMagazine" ? MAGAZINE_SNAP_DISTANCE : SLIDE_SNAP_DISTANCE;
+    const didSnap = distance <= threshold;
 
-    if (distance <= threshold) {
+    console.log("[WeaponAssembly] snap check", {
+      layoutSource: layoutResolution.source,
+      layoutVersion: targetLayout.layoutVersion,
+      partId,
+      draggedLogicalX: Number(x.toFixed(2)),
+      draggedLogicalY: Number(y.toFixed(2)),
+      targetLogicalX: target.x,
+      targetLogicalY: target.y,
+      distance: Number(distance.toFixed(2)),
+      didSnap,
+    });
+
+    if (didSnap) {
       completeStep(partId);
       return true;
     }

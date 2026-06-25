@@ -110,6 +110,7 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
 
   const handleSaveLayout = () => {
     const payload: WeaponLayoutPreset = {
+      layoutVersion: DEFAULT_WEAPON_LAYOUT.layoutVersion,
       canvasWidth: WEAPON_CANVAS_WIDTH,
       canvasHeight: WEAPON_CANVAS_HEIGHT,
       parts: {
