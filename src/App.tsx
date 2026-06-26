@@ -36,6 +36,7 @@ function App() {
   const [reactionTimeMs, setReactionTimeMs] = useState<number | null>(null);
   const [motionPermission, setMotionPermission] = useState<MotionPermissionState>("unknown");
   const [pendingGameplayPage, setPendingGameplayPage] = useState<Page>("ready");
+  const [motionReturnPage, setMotionReturnPage] = useState<Page>("home");
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === "undefined" ? 1280 : window.innerWidth,
     height: typeof window === "undefined" ? 720 : window.innerHeight,
@@ -46,12 +47,13 @@ function App() {
   const showRotateOverlay = isPortrait && isMobileSized;
 
   const goToGameplayStart = (nextPage: Page) => {
-    if (motionPermission === "granted" || motionPermission === "unavailable" || motionPermission === "denied") {
+    if (motionPermission === "granted") {
       setCurrentPage(nextPage);
       return;
     }
 
     setPendingGameplayPage(nextPage);
+    setMotionReturnPage(currentPage);
     setCurrentPage("motion-setup");
   };
 
@@ -120,6 +122,7 @@ function App() {
             <MotionSetupPage
               motionPermission={motionPermission}
               pendingGameplayPage={pendingGameplayPage}
+              returnPage={motionReturnPage}
               setCurrentPage={setCurrentPage}
               setMotionPermission={setMotionPermission}
             />

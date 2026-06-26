@@ -4,6 +4,7 @@ import type { MotionPermissionState, Page } from "../App";
 type Props = {
   motionPermission: MotionPermissionState;
   pendingGameplayPage: Page;
+  returnPage: Page;
   setCurrentPage: (page: Page) => void;
   setMotionPermission: (value: MotionPermissionState) => void;
 };
@@ -23,7 +24,7 @@ async function requestMotionAccess() {
     return permission === "granted" ? "granted" : "denied";
   }
 
-  return "unavailable" as MotionPermissionState;
+  return "granted" as MotionPermissionState;
 }
 
 type MotionSample = {
@@ -47,12 +48,17 @@ const EMPTY_SAMPLE: MotionSample = {
 function MotionSetupPage({
   motionPermission,
   pendingGameplayPage,
+  returnPage,
   setCurrentPage,
   setMotionPermission,
 }: Props) {
   const [permissionResult, setPermissionResult] = useState<MotionPermissionState | null>(null);
   const [listenerActive, setListenerActive] = useState(false);
   const [motionSample, setMotionSample] = useState<MotionSample>(EMPTY_SAMPLE);
+  const isTouchDevice =
+    typeof window !== "undefined" &&
+    (navigator.maxTouchPoints > 0 || window.matchMedia?.("(pointer: coarse)").matches === true);
+  const hasMotionApi = typeof window !== "undefined" && "DeviceMotionEvent" in window;
   const deviceMotionType = typeof window !== "undefined" ? typeof window.DeviceMotionEvent : "undefined";
   const requestPermissionType =
     typeof window !== "undefined" && "DeviceMotionEvent" in window
@@ -87,10 +93,12 @@ function MotionSetupPage({
     };
   }, [listenerActive]);
 
+  const handleBack = () => {
+    setCurrentPage(returnPage);
+  };
+
   const handleContinueWithoutMotion = () => {
-    if (motionPermission === "unknown") {
-      setMotionPermission("unavailable");
-    }
+    setMotionPermission("unavailable");
     setCurrentPage(pendingGameplayPage);
   };
 
@@ -102,8 +110,11 @@ function MotionSetupPage({
     try {
       const result = await requestMotionAccess();
       setPermissionResult(result);
-      setListenerActive(result === "granted" || result === "unavailable");
+      setListenerActive(result === "granted");
       setMotionPermission(result === "granted" ? "granted" : result);
+      if (result === "granted") {
+        setCurrentPage(pendingGameplayPage);
+      }
     } catch {
       setPermissionResult("denied");
       setListenerActive(false);
@@ -112,30 +123,48 @@ function MotionSetupPage({
   };
 
   const helperText =
-    permissionResult === "denied" || motionPermission === "denied"
-      ? "Motion access was denied. You can still test firing later with the Space key."
-      : permissionResult === "unavailable" || motionPermission === "unavailable"
-        ? "Motion controls are not available here. Desktop Space key testing will still work."
-        : "Enable motion now so shake-to-fire is ready before you reach the firing phase.";
+    isTouchDevice && (permissionResult === "denied" || motionPermission === "denied")
+      ? "Motion access is required to play on mobile."
+      : isTouchDevice && (permissionResult === "unavailable" || motionPermission === "unavailable")
+        ? "Motion access is required to play on mobile."
+        : !isTouchDevice && (permissionResult === "denied" || motionPermission === "denied")
+          ? "Motion permission was denied. You can try again, or continue on desktop with keyboard testing."
+          : !isTouchDevice && !hasMotionApi
+            ? "Motion APIs are not available here. You can continue on desktop and use the Space key to test firing."
+            : "Enable motion to continue into the game.";
+
+  const primaryLabel =
+    motionPermission === "requesting"
+      ? "Checking..."
+      : permissionResult === "denied" || motionPermission === "denied"
+        ? "Try Again"
+        : "Enable Motion";
 
   return (
-    <main className="screen">
-      <section className="shell stack-gap">
-        <article className="card stage-card card-sky center-card">
+    <main className="screen motion-setup-screen">
+      <section className="shell stack-gap motion-setup-shell">
+        <article className="card stage-card card-sky center-card motion-setup-card">
           <p className="kicker">Enable Motion</p>
           <h2 className="section-title center-title">Turn On Shake Controls</h2>
           <p className="section-text">{helperText}</p>
 
           <div className="action-row center-actions">
-            <button
-              className="button button-blue"
-              onClick={enableMotion}
-              disabled={motionPermission === "requesting"}
-            >
-              {motionPermission === "requesting" ? "Checking..." : "Enable Motion"}
-            </button>
-            <button className="button button-cream" onClick={handleContinueWithoutMotion}>
-              Continue Without Motion
+            {isTouchDevice || hasMotionApi ? (
+              <button
+                className="button button-blue"
+                onClick={enableMotion}
+                disabled={motionPermission === "requesting"}
+              >
+                {primaryLabel}
+              </button>
+            ) : null}
+            {!isTouchDevice ? (
+              <button className="button button-cream" onClick={handleContinueWithoutMotion}>
+                Continue Without Motion
+              </button>
+            ) : null}
+            <button className="button button-cream" onClick={handleBack}>
+              Back
             </button>
           </div>
 
@@ -181,13 +210,6 @@ function MotionSetupPage({
             </div>
           </div>
 
-          {permissionResult ? (
-            <div className="action-row center-actions">
-              <button className="button button-green" onClick={() => setCurrentPage(pendingGameplayPage)}>
-                Continue to Game
-              </button>
-            </div>
-          ) : null}
         </article>
       </section>
     </main>
