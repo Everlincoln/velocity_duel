@@ -1,12 +1,25 @@
+import { useState } from "react";
 import type { Page } from "../App";
 
 type Props = {
   roomCode: string;
   setCurrentPage: (page: Page) => void;
   startGame: (page: Page) => void;
+  onJoinRoom?: (roomCode: string) => void;
+  roomActionLoading?: boolean;
+  roomError?: string | null;
 };
 
-function JoinRoomPage({ roomCode, setCurrentPage, startGame }: Props) {
+function JoinRoomPage({
+  roomCode,
+  setCurrentPage,
+  startGame,
+  onJoinRoom,
+  roomActionLoading = false,
+  roomError = null,
+}: Props) {
+  const [joinCode, setJoinCode] = useState(roomCode);
+
   return (
     <main className="screen">
       <section className="shell stack-gap">
@@ -28,7 +41,11 @@ function JoinRoomPage({ roomCode, setCurrentPage, startGame }: Props) {
             <div className="form-stack">
               <label className="field">
                 <span className="field-label">Room code</span>
-                <input className="input playful-input" defaultValue={roomCode} />
+                <input
+                  className="input playful-input"
+                  value={joinCode}
+                  onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+                />
               </label>
               <label className="field">
                 <span className="field-label">Nickname</span>
@@ -36,9 +53,15 @@ function JoinRoomPage({ roomCode, setCurrentPage, startGame }: Props) {
               </label>
             </div>
 
+            {roomError ? <p className="section-text">{roomError}</p> : null}
+
             <div className="action-row">
-              <button className="button button-blue" onClick={() => startGame("ready")}>
-                Join
+              <button
+                className="button button-blue"
+                onClick={() => (onJoinRoom ? onJoinRoom(joinCode) : startGame("ready"))}
+                disabled={roomActionLoading}
+              >
+                {roomActionLoading ? "JOINING..." : "Join"}
               </button>
               <button className="button button-cream" onClick={() => setCurrentPage("create")}>
                 Host Instead

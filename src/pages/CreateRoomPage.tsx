@@ -3,9 +3,12 @@ import type { Page } from "../App";
 type Props = {
   roomCode: string;
   startGame: (page: Page) => void;
+  onCreateRoom?: () => void;
+  roomActionLoading?: boolean;
+  roomError?: string | null;
 };
 
-function CreateRoomPage({ roomCode, startGame }: Props) {
+function CreateRoomPage({ roomCode, startGame, onCreateRoom, roomActionLoading = false, roomError = null }: Props) {
   return (
     <main className="screen minimal-screen">
       <section className="minimal-shell">
@@ -17,14 +20,15 @@ function CreateRoomPage({ roomCode, startGame }: Props) {
             <strong className="room-code">{roomCode}</strong>
           </div>
 
-          <p className="waiting-text">Waiting for player...</p>
+          <p className="waiting-text">{roomError ?? "Waiting for player..."}</p>
 
           <button
             className="button button-start"
-            onClick={() => startGame("ready")}
+            onClick={() => (onCreateRoom ? onCreateRoom() : startGame("ready"))}
             aria-label="Start"
+            disabled={roomActionLoading}
           >
-            START
+            {roomActionLoading ? "CONNECTING..." : "START"}
           </button>
         </div>
       </section>
