@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Page, RoomPlayer } from "../App";
+import type { MotionPermissionState, Page, RoomPlayer } from "../App";
 import player1 from "../assets/characters/player1.png";
 import player2 from "../assets/characters/player2.png";
 
@@ -11,7 +11,27 @@ type Props = {
   roomPlayers?: RoomPlayer[];
   onToggleReady?: () => void;
   onLeaveRoom?: () => void;
+  motionPermission: MotionPermissionState;
+  setMotionPermission: (value: MotionPermissionState) => void;
 };
+
+type IOSDeviceMotionEvent = typeof DeviceMotionEvent & {
+  requestPermission?: () => Promise<"granted" | "denied">;
+};
+
+async function requestMotionAccess() {
+  if (typeof window === "undefined" || !("DeviceMotionEvent" in window)) {
+    return "unavailable" as MotionPermissionState;
+  }
+
+  const motionEvent = DeviceMotionEvent as IOSDeviceMotionEvent;
+  if (typeof motionEvent.requestPermission === "function") {
+    const permission = await motionEvent.requestPermission();
+    return permission === "granted" ? "granted" : "denied";
+  }
+
+  return "granted" as MotionPermissionState;
+}
 
 function ReadyRoomPage({
   roomCode,
@@ -21,10 +41,16 @@ function ReadyRoomPage({
   roomPlayers = [],
   onToggleReady,
   onLeaveRoom,
+  motionPermission,
+  setMotionPermission,
 }: Props) {
   const [player1Ready, setPlayer1Ready] = useState(false);
   const [player2Ready, setPlayer2Ready] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
+  const isTouchDevice =
+    typeof window !== "undefined" &&
+    (navigator.maxTouchPoints > 0 || window.matchMedia?.("(pointer: coarse)").matches === true);
 
   const socketPlayer1 = useMemo(
     () => roomPlayers.find((player) => player.playerNumber === 1),
@@ -35,34 +61,71 @@ function ReadyRoomPage({
     [roomPlayers],
   );
 
-  const handlePlayer1Toggle = () => {
-    if (useSocketFlow) {
-      if (currentPlayerNumber === 1) {
-        onToggleReady?.();
+  const requestPermissionAndReady = async (playerNumber: 1 | 2) => {
+    const triggerReady = () => {
+      setPermissionMessage(null);
+
+      if (useSocketFlow) {
+        if (currentPlayerNumber === playerNumber) {
+          onToggleReady?.();
+        }
+        return;
       }
+
+      if (playerNumber === 1) {
+        const nextPlayer1Ready = !player1Ready;
+        const nextBothReady = nextPlayer1Ready && player2Ready;
+        setPlayer1Ready(nextPlayer1Ready);
+        setCountdown(nextBothReady ? 3 : null);
+        return;
+      }
+
+      const nextPlayer2Ready = !player2Ready;
+      const nextBothReady = player1Ready && nextPlayer2Ready;
+      setPlayer2Ready(nextPlayer2Ready);
+      setCountdown(nextBothReady ? 3 : null);
+    };
+
+    if (!isTouchDevice) {
+      triggerReady();
       return;
     }
 
-    const nextPlayer1Ready = !player1Ready;
-    const nextBothReady = nextPlayer1Ready && player2Ready;
+    if (motionPermission === "granted") {
+      triggerReady();
+      return;
+    }
 
-    setPlayer1Ready(nextPlayer1Ready);
-    setCountdown(nextBothReady ? 3 : null);
+    try {
+      setMotionPermission("requesting");
+      const result = await requestMotionAccess();
+
+      if (result === "granted") {
+        setMotionPermission("granted");
+        triggerReady();
+        return;
+      }
+
+      setMotionPermission(result);
+      setPermissionMessage("Motion access is required to play on mobile. Please enable motion permission and try again.");
+    } catch {
+      setMotionPermission("denied");
+      setPermissionMessage("Motion access is required to play on mobile. Please enable motion permission and try again.");
+    }
+  };
+
+  const handlePlayer1Toggle = () => {
+    if (useSocketFlow && currentPlayerNumber !== 1) {
+      return;
+    }
+    void requestPermissionAndReady(1);
   };
 
   const handlePlayer2Toggle = () => {
-    if (useSocketFlow) {
-      if (currentPlayerNumber === 2) {
-        onToggleReady?.();
-      }
+    if (useSocketFlow && currentPlayerNumber !== 2) {
       return;
     }
-
-    const nextPlayer2Ready = !player2Ready;
-    const nextBothReady = player1Ready && nextPlayer2Ready;
-
-    setPlayer2Ready(nextPlayer2Ready);
-    setCountdown(nextBothReady ? 3 : null);
+    void requestPermissionAndReady(2);
   };
 
   useEffect(() => {
@@ -89,6 +152,36 @@ function ReadyRoomPage({
   const displayPlayer1Ready = useSocketFlow ? (socketPlayer1?.ready ?? false) : player1Ready;
   const displayPlayer2Ready = useSocketFlow ? (socketPlayer2?.ready ?? false) : player2Ready;
   const displayCountdown = useSocketFlow ? null : countdown;
+  const player1IsCurrent = !useSocketFlow || currentPlayerNumber === 1;
+  const player2IsCurrent = !useSocketFlow || currentPlayerNumber === 2;
+
+  const getActionLabel = (isCurrentPlayer: boolean, isReady: boolean) => {
+    if (isReady) {
+      return "READY!";
+    }
+
+    if (!isCurrentPlayer) {
+      return "NOT READY";
+    }
+
+    if (!isTouchDevice) {
+      return "READY";
+    }
+
+    if (motionPermission === "requesting") {
+      return "CHECKING...";
+    }
+
+    if (motionPermission === "denied" || motionPermission === "unavailable") {
+      return "TRY AGAIN";
+    }
+
+    if (motionPermission === "granted") {
+      return "READY";
+    }
+
+    return "ENABLE MOTION";
+  };
 
   return (
     <main className="screen ready-screen">
@@ -119,10 +212,10 @@ function ReadyRoomPage({
                 type="button"
                 className={`ready-badge ${displayPlayer1Ready ? "ready-badge-on" : "ready-badge-off"}`}
                 onClick={handlePlayer1Toggle}
-                disabled={useSocketFlow && currentPlayerNumber !== 1}
+                disabled={useSocketFlow && !player1IsCurrent}
               >
                 <span className="ready-check">{displayPlayer1Ready ? "✓" : "○"}</span>
-                <span>{displayPlayer1Ready ? "READY!" : "NOT READY"}</span>
+                <span>{getActionLabel(player1IsCurrent, displayPlayer1Ready)}</span>
               </button>
             </div>
 
@@ -144,13 +237,15 @@ function ReadyRoomPage({
                 type="button"
                 className={`ready-badge ${displayPlayer2Ready ? "ready-badge-on" : "ready-badge-off"}`}
                 onClick={handlePlayer2Toggle}
-                disabled={useSocketFlow && currentPlayerNumber !== 2}
+                disabled={useSocketFlow && !player2IsCurrent}
               >
                 <span className="ready-check">{displayPlayer2Ready ? "✓" : "○"}</span>
-                <span>{displayPlayer2Ready ? "READY!" : "NOT READY"}</span>
+                <span>{getActionLabel(player2IsCurrent, displayPlayer2Ready)}</span>
               </button>
             </div>
           </div>
+
+          {permissionMessage ? <p className="section-text">{permissionMessage}</p> : null}
 
           <div className="ready-controls">
             <button className="ready-control-button" onClick={() => (onLeaveRoom ? onLeaveRoom() : setCurrentPage("home"))}>

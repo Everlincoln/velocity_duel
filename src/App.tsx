@@ -149,7 +149,7 @@ function App() {
       setSocketAvailable(false);
       resetRoomSession();
       setRoomActionLoading(false);
-      goToGameplayStart("ready");
+      setCurrentPage("ready");
       return;
     }
 
@@ -185,7 +185,7 @@ function App() {
       setSocketAvailable(false);
       resetRoomSession();
       setRoomActionLoading(false);
-      goToGameplayStart("ready");
+      setCurrentPage("ready");
       return;
     }
 
@@ -302,7 +302,7 @@ function App() {
       console.log("[socket] bothPlayersReady", room);
       setRoomCode(room.roomCode);
       setRoomPlayers(room.players);
-      goToGameplayStart("assembly");
+      setCurrentPage("assembly");
     };
 
     socket.on("connect", handleConnect);
@@ -358,7 +358,7 @@ function App() {
           {currentPage === "create" && (
             <CreateRoomPage
               roomCode={roomCode}
-              startGame={goToGameplayStart}
+              startGame={setCurrentPage}
               onCreateRoom={handleCreateRoom}
               roomActionLoading={roomActionLoading}
               roomError={roomError}
@@ -368,7 +368,7 @@ function App() {
             <JoinRoomPage
               roomCode={roomCode}
               setCurrentPage={setCurrentPage}
-              startGame={goToGameplayStart}
+              startGame={setCurrentPage}
               onJoinRoom={handleJoinRoom}
               roomActionLoading={roomActionLoading}
               roomError={roomError}
@@ -392,6 +392,8 @@ function App() {
               roomPlayers={roomPlayers}
               onToggleReady={handleSocketReadyToggle}
               onLeaveRoom={handleLeaveRoom}
+              motionPermission={motionPermission}
+              setMotionPermission={setMotionPermission}
             />
           )}
           {currentPage === "assembly" && (
