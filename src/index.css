@@ -709,6 +709,36 @@ body::before {
   overflow: hidden;
 }
 
+.weapon-mini-screen .layout-editor-shell {
+  width: min(100%, 1600px);
+  min-height: calc(100dvh - 48px);
+  gap: 14px;
+  align-content: stretch;
+}
+
+.weapon-mini-screen .layout-editor-topbar {
+  gap: 14px;
+}
+
+.weapon-mini-screen .layout-editor-subtitle {
+  max-width: 760px;
+}
+
+.weapon-mini-screen .layout-editor-canvas-card {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.weapon-mini-screen .weapon-canvas {
+  width: min(100%, calc((100dvh - 154px) * 1.7778));
+  max-width: 100%;
+}
+
+.weapon-mini-screen .weapon-canvas-stage {
+  inset: 20px;
+}
+
 .weapon-mini-screen-shake {
   animation: assembly-shake 220ms linear;
 }
@@ -2494,7 +2524,7 @@ body::before {
   }
 
   .weapon-mini-screen .weapon-canvas {
-    width: min(100%, calc((100dvh - 210px) * 1.7778));
+    width: min(100%, calc((100dvh - 176px) * 1.7778));
   }
 
   .weapon-mini-screen .weapon-canvas-stage {
@@ -2664,7 +2694,7 @@ body::before {
   }
 
   .weapon-mini-screen .weapon-canvas {
-    width: min(100%, calc((100dvh - 180px) * 1.7778));
+    width: min(100%, calc((100dvh - 156px) * 1.7778));
   }
 
   .weapon-mini-screen .weapon-canvas-stage {
@@ -2842,7 +2872,7 @@ body::before {
   }
 
   .weapon-mini-screen .weapon-canvas {
-    width: min(100%, calc((100dvh - 112px) * 1.7778));
+    width: min(100%, calc((100dvh - 92px) * 1.7778));
     max-width: 100%;
   }
 
@@ -3040,7 +3070,7 @@ body::before {
   }
 
   .weapon-mini-screen .weapon-canvas {
-    width: min(100%, calc((100dvh - 190px) * 1.7778));
+    width: min(100%, calc((100dvh - 158px) * 1.7778));
   }
 
   .weapon-mini-screen .weapon-canvas-stage {
