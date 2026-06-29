@@ -39,6 +39,16 @@ function createRoomState(roomCode) {
   };
 }
 
+function normalizeNickname(nickname, playerNumber) {
+  const trimmedNickname = typeof nickname === "string" ? nickname.trim() : "";
+
+  if (!trimmedNickname) {
+    return `Player ${playerNumber}`;
+  }
+
+  return trimmedNickname.slice(0, 24);
+}
+
 function nextPlayerNumber(players) {
   if (!players.find((player) => player.playerNumber === 1)) {
     return 1;
@@ -57,6 +67,7 @@ function serializeRoom(room) {
     players: room.players.map((player) => ({
       socketId: player.socketId,
       playerNumber: player.playerNumber,
+      nickname: player.nickname,
       ready: player.ready,
       reactionTimeMs: player.reactionTimeMs,
     })),
@@ -99,7 +110,7 @@ function removePlayerFromRoom(socket) {
   emitRoomUpdate(roomCode);
 }
 
-function upsertPlayer(roomCode, socket) {
+function upsertPlayer(roomCode, socket, nickname) {
   let room = rooms.get(roomCode);
   if (!room) {
     room = createRoomState(roomCode);
@@ -118,6 +129,7 @@ function upsertPlayer(roomCode, socket) {
   const player = {
     socketId: socket.id,
     playerNumber,
+    nickname: normalizeNickname(nickname, playerNumber),
     ready: false,
     reactionTimeMs: null,
   };
@@ -134,7 +146,7 @@ io.on("connection", (socket) => {
   socket.data.roomCode = null;
   socket.data.playerNumber = null;
 
-  socket.on("createRoom", ({ roomCode }, callback) => {
+  socket.on("createRoom", ({ roomCode, nickname }, callback) => {
     if (!roomCode) {
       callback?.({ ok: false, error: "roomCode is required" });
       return;
@@ -142,7 +154,7 @@ io.on("connection", (socket) => {
 
     removePlayerFromRoom(socket);
 
-    const result = upsertPlayer(roomCode, socket);
+    const result = upsertPlayer(roomCode, socket, nickname);
     if (result.error) {
       callback?.({ ok: false, error: result.error });
       return;
@@ -160,7 +172,7 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("joinRoom", ({ roomCode }, callback) => {
+  socket.on("joinRoom", ({ roomCode, nickname }, callback) => {
     if (!roomCode) {
       callback?.({ ok: false, error: "roomCode is required" });
       return;
@@ -174,7 +186,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const result = upsertPlayer(roomCode, socket);
+    const result = upsertPlayer(roomCode, socket, nickname);
     if (result.error) {
       callback?.({ ok: false, error: result.error });
       return;

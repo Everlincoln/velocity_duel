@@ -34,6 +34,7 @@ export type MotionPermissionState =
 export type RoomPlayer = {
   socketId: string;
   playerNumber: 1 | 2;
+  nickname: string;
   ready: boolean;
   reactionTimeMs: number | null;
 };
@@ -48,6 +49,60 @@ function generateRoomCode() {
   return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
+const NICKNAME_ADJECTIVES = [
+  "Rocket",
+  "Chaos",
+  "Disco",
+  "Space",
+  "Turbo",
+  "Lucky",
+  "Sneaky",
+  "Tiny",
+  "Sleepy",
+  "Dancing",
+  "Grumpy",
+  "Confused",
+];
+
+const NICKNAME_NOUNS = [
+  "Duck",
+  "Potato",
+  "Banana",
+  "Penguin",
+  "Frog",
+  "Carrot",
+  "Whale",
+  "Panda",
+  "Dragon",
+  "Ghost",
+  "Cactus",
+  "Marshmallow",
+];
+
+function generateFunNickname() {
+  const adjective = NICKNAME_ADJECTIVES[Math.floor(Math.random() * NICKNAME_ADJECTIVES.length)];
+  const noun = NICKNAME_NOUNS[Math.floor(Math.random() * NICKNAME_NOUNS.length)];
+  return `${adjective} ${noun}`;
+}
+
+function normalizeNicknameInput(input: string) {
+  return input.trim().replace(/\s+/g, " ").slice(0, 24);
+}
+
+function getJoinRoomValidationError(input: string) {
+  const trimmedRoomCode = input.trim().toUpperCase();
+
+  if (!trimmedRoomCode) {
+    return "Please enter a room code.";
+  }
+
+  if (!/^[A-Z0-9]{4,6}$/.test(trimmedRoomCode)) {
+    return "Enter a valid room code.";
+  }
+
+  return null;
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [roomCode, setRoomCode] = useState(generateRoomCode());
@@ -60,6 +115,9 @@ function App() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [roomActionLoading, setRoomActionLoading] = useState(false);
   const [socketAvailable, setSocketAvailable] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState("");
+  const [sessionNickname, setSessionNickname] = useState("");
+  const [fallbackOpponentNickname] = useState(() => generateFunNickname());
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === "undefined" ? 1280 : window.innerWidth,
     height: typeof window === "undefined" ? 720 : window.innerHeight,
@@ -87,6 +145,23 @@ function App() {
     setCurrentPlayerNumber(null);
     setRoomError(null);
     setRoomActionLoading(false);
+  };
+
+  const resolveSessionNickname = () => {
+    const normalizedNickname = normalizeNicknameInput(nicknameInput);
+
+    if (normalizedNickname) {
+      setSessionNickname(normalizedNickname);
+      return normalizedNickname;
+    }
+
+    if (sessionNickname) {
+      return sessionNickname;
+    }
+
+    const generatedNickname = generateFunNickname();
+    setSessionNickname(generatedNickname);
+    return generatedNickname;
   };
 
   const ensureSocketConnection = async () => {
@@ -139,6 +214,7 @@ function App() {
 
   const handleCreateRoom = async () => {
     const nextRoomCode = roomCode || generateRoomCode();
+    const nickname = resolveSessionNickname();
     setRoomCode(nextRoomCode);
     setRoomError(null);
     setRoomActionLoading(true);
@@ -155,7 +231,7 @@ function App() {
 
     socket.emit(
       "createRoom",
-      { roomCode: nextRoomCode },
+      { roomCode: nextRoomCode, nickname },
       (result: { ok: boolean; error?: string; room?: RoomStatePayload; playerNumber?: 1 | 2 }) => {
         console.log("[socket] createRoom result", result);
         setRoomActionLoading(false);
@@ -175,6 +251,15 @@ function App() {
 
   const handleJoinRoom = async (nextRoomCode: string) => {
     const trimmedRoomCode = nextRoomCode.trim().toUpperCase();
+    const validationError = getJoinRoomValidationError(trimmedRoomCode);
+    const nickname = resolveSessionNickname();
+
+    if (validationError) {
+      setRoomError(validationError);
+      setRoomActionLoading(false);
+      return;
+    }
+
     setRoomError(null);
     setRoomActionLoading(true);
     setRoomCode(trimmedRoomCode);
@@ -191,13 +276,19 @@ function App() {
 
     socket.emit(
       "joinRoom",
-      { roomCode: trimmedRoomCode },
+      { roomCode: trimmedRoomCode, nickname },
       (result: { ok: boolean; error?: string; room?: RoomStatePayload; playerNumber?: 1 | 2 }) => {
         console.log("[socket] joinRoom result", result);
         setRoomActionLoading(false);
 
         if (!result?.ok || !result.room || !result.playerNumber) {
-          setRoomError(result?.error || "Unable to join room.");
+          const normalizedError =
+            result?.error === "Room not found" || result?.error === "Room not found."
+              ? "Room not found."
+              : result?.error === "Room is full" || result?.error === "Room is full."
+                ? "Room is full."
+                : result?.error || "Unable to join room.";
+          setRoomError(normalizedError);
           return;
         }
 
@@ -354,7 +445,15 @@ function App() {
             </button>
           ) : null}
 
-          {currentPage === "home" && <HomePage setCurrentPage={setCurrentPage} />}
+          {currentPage === "home" && (
+            <HomePage
+              setCurrentPage={setCurrentPage}
+              onStartGame={handleCreateRoom}
+              roomActionLoading={roomActionLoading}
+              nickname={nicknameInput}
+              onNicknameChange={setNicknameInput}
+            />
+          )}
           {currentPage === "create" && (
             <CreateRoomPage
               roomCode={roomCode}
@@ -367,7 +466,6 @@ function App() {
           {currentPage === "join" && (
             <JoinRoomPage
               roomCode={roomCode}
-              setCurrentPage={setCurrentPage}
               startGame={setCurrentPage}
               onJoinRoom={handleJoinRoom}
               roomActionLoading={roomActionLoading}
@@ -394,6 +492,8 @@ function App() {
               onLeaveRoom={handleLeaveRoom}
               motionPermission={motionPermission}
               setMotionPermission={setMotionPermission}
+              fallbackCurrentNickname={sessionNickname || normalizeNicknameInput(nicknameInput) || "Rocket Duck"}
+              fallbackOpponentNickname={fallbackOpponentNickname}
             />
           )}
           {currentPage === "assembly" && (

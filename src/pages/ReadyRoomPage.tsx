@@ -13,6 +13,8 @@ type Props = {
   onLeaveRoom?: () => void;
   motionPermission: MotionPermissionState;
   setMotionPermission: (value: MotionPermissionState) => void;
+  fallbackCurrentNickname?: string;
+  fallbackOpponentNickname?: string;
 };
 
 type IOSDeviceMotionEvent = typeof DeviceMotionEvent & {
@@ -43,11 +45,14 @@ function ReadyRoomPage({
   onLeaveRoom,
   motionPermission,
   setMotionPermission,
+  fallbackCurrentNickname = "Rocket Duck",
+  fallbackOpponentNickname = "Chaos Banana",
 }: Props) {
   const [player1Ready, setPlayer1Ready] = useState(false);
   const [player2Ready, setPlayer2Ready] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<"idle" | "copied" | "failed">("idle");
   const isTouchDevice =
     typeof window !== "undefined" &&
     (navigator.maxTouchPoints > 0 || window.matchMedia?.("(pointer: coarse)").matches === true);
@@ -128,6 +133,20 @@ function ReadyRoomPage({
     void requestPermissionAndReady(2);
   };
 
+  const handleCopyRoomCode = async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      setCopyFeedback("failed");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopyFeedback("copied");
+    } catch {
+      setCopyFeedback("failed");
+    }
+  };
+
   useEffect(() => {
     if (useSocketFlow) {
       return;
@@ -149,15 +168,39 @@ function ReadyRoomPage({
     return () => window.clearTimeout(timer);
   }, [countdown, setCurrentPage, useSocketFlow]);
 
+  useEffect(() => {
+    if (copyFeedback === "idle") {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCopyFeedback("idle");
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, [copyFeedback]);
+
   const displayPlayer1Ready = useSocketFlow ? (socketPlayer1?.ready ?? false) : player1Ready;
   const displayPlayer2Ready = useSocketFlow ? (socketPlayer2?.ready ?? false) : player2Ready;
   const displayCountdown = useSocketFlow ? null : countdown;
   const player1IsCurrent = !useSocketFlow || currentPlayerNumber === 1;
   const player2IsCurrent = !useSocketFlow || currentPlayerNumber === 2;
+  const player1Present = useSocketFlow ? Boolean(socketPlayer1) : true;
+  const player2Present = useSocketFlow ? Boolean(socketPlayer2) : true;
+  const player1Name = useSocketFlow
+    ? socketPlayer1?.nickname ?? "Waiting..."
+    : currentPlayerNumber === 2
+      ? fallbackOpponentNickname
+      : fallbackCurrentNickname;
+  const player2Name = useSocketFlow
+    ? socketPlayer2?.nickname ?? "Waiting..."
+    : currentPlayerNumber === 2
+      ? fallbackCurrentNickname
+      : fallbackOpponentNickname;
 
   const getActionLabel = (isCurrentPlayer: boolean, isReady: boolean) => {
     if (isReady) {
-      return "READY!";
+      return "READY";
     }
 
     if (!isCurrentPlayer) {
@@ -183,6 +226,50 @@ function ReadyRoomPage({
     return "ENABLE MOTION";
   };
 
+  const getOtherPlayerStatus = (isPresent: boolean, isReady: boolean) => {
+    if (!isPresent) {
+      return "WAITING...";
+    }
+
+    if (isReady) {
+      return "READY";
+    }
+
+    return "NOT READY";
+  };
+
+  const renderPlayerAction = (
+    isCurrentPlayer: boolean,
+    isPresent: boolean,
+    isReady: boolean,
+    onToggle: () => void,
+  ) => {
+    if (!isCurrentPlayer) {
+      return (
+        <div className={`ready-status ready-status-passive ${isReady ? "ready-badge-on" : "ready-badge-off"}`}>
+          <span className="ready-check">{isReady ? "✓" : isPresent ? "○" : "…"}</span>
+          <span>{getOtherPlayerStatus(isPresent, isReady)}</span>
+        </div>
+      );
+    }
+
+    if (isReady) {
+      return (
+        <div className="ready-status ready-status-active ready-badge ready-badge-on">
+          <span className="ready-check">✓</span>
+          <span>READY</span>
+        </div>
+      );
+    }
+
+    return (
+      <button type="button" className="ready-badge ready-badge-off" onClick={onToggle}>
+        <span className="ready-check">{motionPermission === "requesting" ? "…" : "○"}</span>
+        <span>{getActionLabel(isCurrentPlayer, isReady)}</span>
+      </button>
+    );
+  };
+
   return (
     <main className="screen ready-screen">
       <section className="ready-shell">
@@ -197,9 +284,20 @@ function ReadyRoomPage({
           <span className="ready-splash splash-right" />
         </div>
 
-        <span className="sr-only">{roomCode}</span>
-
         <article className="ready-stage">
+          <div className="ready-room-code">
+            <div className="ready-room-code-copy">
+              <div className="ready-room-code-text">
+                <span className="ready-room-code-label">ROOM CODE</span>
+                <strong className="ready-room-code-value">{roomCode}</strong>
+              </div>
+              <button type="button" className="ready-copy-button" onClick={handleCopyRoomCode}>
+                {copyFeedback === "copied" ? "COPIED" : "COPY"}
+              </button>
+            </div>
+            {copyFeedback === "failed" ? <span className="ready-copy-feedback">Copy unavailable</span> : null}
+          </div>
+
           <h1 className="ready-title">READY?</h1>
 
           <div className="ready-lineup">
@@ -207,16 +305,11 @@ function ReadyRoomPage({
               <div className="ready-avatar ready-avatar-blue">
                 <img src={player1} alt="Player 1 avatar" className="ready-avatar-image" />
               </div>
-              <div className="ready-label ready-label-blue">PLAYER 1</div>
-              <button
-                type="button"
-                className={`ready-badge ${displayPlayer1Ready ? "ready-badge-on" : "ready-badge-off"}`}
-                onClick={handlePlayer1Toggle}
-                disabled={useSocketFlow && !player1IsCurrent}
-              >
-                <span className="ready-check">{displayPlayer1Ready ? "✓" : "○"}</span>
-                <span>{getActionLabel(player1IsCurrent, displayPlayer1Ready)}</span>
-              </button>
+              <div className="ready-label ready-label-blue">
+                {player1Name}
+                {player1IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
+              </div>
+              {renderPlayerAction(player1IsCurrent, player1Present, displayPlayer1Ready, handlePlayer1Toggle)}
             </div>
 
             <div className={`ready-count-zone ${displayCountdown === null ? "ready-count-hidden" : ""}`}>
@@ -232,20 +325,15 @@ function ReadyRoomPage({
               <div className="ready-avatar ready-avatar-pink">
                 <img src={player2} alt="Player 2 avatar" className="ready-avatar-image" />
               </div>
-              <div className="ready-label ready-label-red">PLAYER 2</div>
-              <button
-                type="button"
-                className={`ready-badge ${displayPlayer2Ready ? "ready-badge-on" : "ready-badge-off"}`}
-                onClick={handlePlayer2Toggle}
-                disabled={useSocketFlow && !player2IsCurrent}
-              >
-                <span className="ready-check">{displayPlayer2Ready ? "✓" : "○"}</span>
-                <span>{getActionLabel(player2IsCurrent, displayPlayer2Ready)}</span>
-              </button>
+              <div className="ready-label ready-label-red">
+                {player2Name}
+                {player2IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
+              </div>
+              {renderPlayerAction(player2IsCurrent, player2Present, displayPlayer2Ready, handlePlayer2Toggle)}
             </div>
           </div>
 
-          {permissionMessage ? <p className="section-text">{permissionMessage}</p> : null}
+          {permissionMessage ? <p className="section-text ready-permission-message">{permissionMessage}</p> : null}
 
           <div className="ready-controls">
             <button className="ready-control-button" onClick={() => (onLeaveRoom ? onLeaveRoom() : setCurrentPage("home"))}>

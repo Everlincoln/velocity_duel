@@ -3,9 +3,13 @@ import mainCharacter from "../assets/characters/hero.png";
 
 type Props = {
   setCurrentPage: (page: Page) => void;
+  onStartGame?: () => void;
+  roomActionLoading?: boolean;
+  nickname: string;
+  onNicknameChange: (value: string) => void;
 };
 
-function HomePage({ setCurrentPage }: Props) {
+function HomePage({ setCurrentPage, onStartGame, roomActionLoading = false, nickname, onNicknameChange }: Props) {
   return (
     <main className="screen screen-home screen-home-simple">
       <section className="shell home-simple-shell">
@@ -20,15 +24,32 @@ function HomePage({ setCurrentPage }: Props) {
               <span className="home-title-bottom">Duel</span>
             </h1>
 
+            <label className="field home-nickname-field">
+              <span className="sr-only">Nickname</span>
+              <input
+                className="input playful-input home-nickname-input"
+                value={nickname}
+                onChange={(event) => onNicknameChange(event.target.value)}
+                maxLength={24}
+                placeholder="Enter nickname (optional)"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </label>
+
             <div className="home-simple-actions">
-              <button className="button button-big button-yellow" onClick={() => setCurrentPage("create")}>
-                Create Arena
+              <button
+                className="button button-big button-yellow"
+                onClick={() => (onStartGame ? onStartGame() : setCurrentPage("create"))}
+                disabled={roomActionLoading}
+              >
+                {roomActionLoading ? "STARTING..." : "PLAY"}
               </button>
               <button
                 className="button button-big button-blue button-home-outline"
                 onClick={() => setCurrentPage("join")}
               >
-                Join Duel
+                JOIN ROOM
               </button>
             </div>
           </div>

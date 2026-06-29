@@ -16,11 +16,11 @@ function CreateRoomPage({ roomCode, startGame, onCreateRoom, roomActionLoading =
           <p className="kicker">Create Room</p>
           <h1 className="center-title">CREATE ROOM</h1>
 
-          <div className="room-code-card">
-            <strong className="room-code">{roomCode}</strong>
-          </div>
+        <div className="room-code-card">
+          <strong className="room-code">{roomCode}</strong>
+        </div>
 
-          <p className="waiting-text">{roomError ?? "Waiting for player..."}</p>
+          <p className="waiting-text">{roomError ?? "Create the room and jump in as Player 1."}</p>
 
           <button
             className="button button-start"
@@ -28,7 +28,7 @@ function CreateRoomPage({ roomCode, startGame, onCreateRoom, roomActionLoading =
             aria-label="Start"
             disabled={roomActionLoading}
           >
-            {roomActionLoading ? "CONNECTING..." : "START"}
+            {roomActionLoading ? "CREATING..." : "PLAY"}
           </button>
         </div>
       </section>

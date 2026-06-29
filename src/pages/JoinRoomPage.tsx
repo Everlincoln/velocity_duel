@@ -3,7 +3,6 @@ import type { Page } from "../App";
 
 type Props = {
   roomCode: string;
-  setCurrentPage: (page: Page) => void;
   startGame: (page: Page) => void;
   onJoinRoom?: (roomCode: string) => void;
   roomActionLoading?: boolean;
@@ -12,7 +11,6 @@ type Props = {
 
 function JoinRoomPage({
   roomCode,
-  setCurrentPage,
   startGame,
   onJoinRoom,
   roomActionLoading = false,
@@ -21,71 +19,40 @@ function JoinRoomPage({
   const [joinCode, setJoinCode] = useState(roomCode);
 
   return (
-    <main className="screen">
-      <section className="shell stack-gap">
-        <div className="topbar">
-          <button className="button button-pill button-cream" onClick={() => setCurrentPage("home")}>
-            Home
-          </button>
-          <div className="topbar-mark">Join Flow</div>
-        </div>
+    <main className="screen minimal-screen">
+      <section className="minimal-shell">
+        <div className="minimal-card join-minimal-card">
+          <p className="kicker">Join Room</p>
+          <h1 className="center-title">JOIN DUEL</h1>
+          <p className="section-text join-room-text">Enter a room code and jump straight into the lobby.</p>
 
-        <div className="layout-two">
-          <article className="card stage-card card-sky">
-            <p className="kicker">Join Room</p>
-            <h2 className="section-title center-title">Join Duel</h2>
-            <p className="section-text">
-              Type the room code, pick your nickname, and jump into the countdown.
-            </p>
+          <label className="field join-room-field">
+            <span className="field-label">Room Code</span>
+            <input
+              className="input playful-input join-room-input"
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+              maxLength={6}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="ABCD"
+            />
+          </label>
 
-            <div className="form-stack">
-              <label className="field">
-                <span className="field-label">Room code</span>
-                <input
-                  className="input playful-input"
-                  value={joinCode}
-                  onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                />
-              </label>
-              <label className="field">
-                <span className="field-label">Nickname</span>
-                <input className="input playful-input" placeholder="Banana Rocket" />
-              </label>
-            </div>
+          <p className={`waiting-text join-room-message ${roomError ? "join-room-message-error" : ""}`}>
+            {roomError ?? "Ask your friend for the room code."}
+          </p>
 
-            {roomError ? <p className="section-text">{roomError}</p> : null}
-
-            <div className="action-row">
-              <button
-                className="button button-blue"
-                onClick={() => (onJoinRoom ? onJoinRoom(joinCode) : startGame("ready"))}
-                disabled={roomActionLoading}
-              >
-                {roomActionLoading ? "JOINING..." : "Join"}
-              </button>
-              <button className="button button-cream" onClick={() => setCurrentPage("create")}>
-                Host Instead
-              </button>
-            </div>
-          </article>
-
-          <aside className="card card-lilac">
-            <p className="kicker">Fast read</p>
-            <div className="tips-grid">
-              <div className="tip-box">
-                <strong>One clear input</strong>
-                <span>No clutter between the player and the match.</span>
-              </div>
-              <div className="tip-box">
-                <strong>Phone-friendly</strong>
-                <span>Large tap zones and roomy spacing for thumbs.</span>
-              </div>
-              <div className="tip-box">
-                <strong>Playful tone</strong>
-                <span>The UI feels welcoming even before the match starts.</span>
-              </div>
-            </div>
-          </aside>
+          <div className="join-room-actions">
+            <button
+              className="button button-blue"
+              onClick={() => (onJoinRoom ? onJoinRoom(joinCode) : startGame("ready"))}
+              disabled={roomActionLoading}
+            >
+              {roomActionLoading ? "JOINING..." : "PLAY"}
+            </button>
+          </div>
         </div>
       </section>
     </main>
