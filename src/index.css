@@ -739,6 +739,26 @@ body::before {
   inset: 20px;
 }
 
+.assembly-debug-overlay {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 60;
+  display: grid;
+  gap: 4px;
+  max-width: min(92vw, 540px);
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(17, 30, 54, 0.86);
+  color: #f2f8ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.28;
+  box-shadow: 0 8px 24px rgba(12, 24, 46, 0.24);
+  pointer-events: none;
+  word-break: break-word;
+}
+
 .weapon-mini-screen-shake {
   animation: assembly-shake 220ms linear;
 }

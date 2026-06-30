@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
 import {
   DEFAULT_WEAPON_LAYOUT,
-  readSavedWeaponLayout,
+  resolveWeaponLayout,
   serializeWeaponLayout,
   WEAPON_CANVAS_HEIGHT,
   WEAPON_CANVAS_WIDTH,
@@ -18,17 +18,31 @@ type Props = {
   setCurrentPage: (page: Page) => void;
 };
 
+type EditorDebugInfo = {
+  canvasWidth: number;
+  canvasHeight: number;
+  canvasParentWidth: number;
+  canvasParentHeight: number;
+  scaleX: number;
+  scaleY: number;
+};
+
 function WeaponLayoutEditor({ setCurrentPage }: Props) {
   const [selectedPartId, setSelectedPartId] = useState<WeaponPartId>("weaponMagazine");
   const [ghostMode, setGhostMode] = useState(false);
   const [debugMode, setDebugMode] = useState(true);
-  const [layout, setLayout] = useState<WeaponLayoutPreset>(() => readSavedWeaponLayout());
+  const [layoutResolution] = useState(() => resolveWeaponLayout());
+  const [layout, setLayout] = useState<WeaponLayoutPreset>(() => layoutResolution.layout);
   const [savedLayoutJson, setSavedLayoutJson] = useState("");
   const [lastSavedAt, setLastSavedAt] = useState("");
   const [testMode, setTestMode] = useState(false);
   const [draggingPartId, setDraggingPartId] = useState<WeaponPartId | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [nudgeStep, setNudgeStep] = useState(1);
+  const [debugInfo, setDebugInfo] = useState<EditorDebugInfo | null>(null);
+  const screenRef = useRef<HTMLElement | null>(null);
+  const shellRef = useRef<HTMLElement | null>(null);
+  const canvasCardRef = useRef<HTMLElement | null>(null);
 
   const selectedLayout = layout.parts[selectedPartId];
   const selectedPart = useMemo(
@@ -156,6 +170,80 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
   };
 
   useEffect(() => {
+    console.log("[WeaponLayoutEditor] layout source", layoutResolution.source);
+    console.log("[WeaponLayoutEditor] layout version", layout.layoutVersion);
+    console.log("[WeaponLayoutEditor] loaded layout JSON", JSON.stringify(layout, null, 2));
+    console.log("[WeaponLayoutEditor] canvas width/height", {
+      canvasWidth: layout.canvasWidth,
+      canvasHeight: layout.canvasHeight,
+    });
+  }, [layout, layoutResolution.source]);
+
+  useEffect(() => {
+    const updateDebugInfo = () => {
+      const canvasCardElement = canvasCardRef.current;
+      const canvasElement = canvasCardElement?.querySelector(".weapon-canvas") as HTMLDivElement | null;
+
+      if (!canvasCardElement || !canvasElement) {
+        return;
+      }
+
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const canvasParentRect = canvasCardElement.getBoundingClientRect();
+
+      const nextDebugInfo: EditorDebugInfo = {
+        canvasWidth: Number(canvasRect.width.toFixed(2)),
+        canvasHeight: Number(canvasRect.height.toFixed(2)),
+        canvasParentWidth: Number(canvasParentRect.width.toFixed(2)),
+        canvasParentHeight: Number(canvasParentRect.height.toFixed(2)),
+        scaleX: Number((canvasRect.width / WEAPON_CANVAS_WIDTH).toFixed(4)),
+        scaleY: Number((canvasRect.height / WEAPON_CANVAS_HEIGHT).toFixed(4)),
+      };
+
+      console.log("[WeaponLayoutEditor][size-debug]", {
+        layoutSource: layoutResolution.source,
+        layoutVersion: layout.layoutVersion,
+        canvasWidth: layout.canvasWidth,
+        canvasHeight: layout.canvasHeight,
+        weaponFrame: {
+          x: layout.parts.weaponFrame.x,
+          y: layout.parts.weaponFrame.y,
+          scale: layout.parts.weaponFrame.scale,
+        },
+        weaponMagazine: {
+          x: layout.parts.weaponMagazine.x,
+          y: layout.parts.weaponMagazine.y,
+          scale: layout.parts.weaponMagazine.scale,
+        },
+        weaponSlide: {
+          x: layout.parts.weaponSlide.x,
+          y: layout.parts.weaponSlide.y,
+          scale: layout.parts.weaponSlide.scale,
+        },
+        renderedCanvasWidth: nextDebugInfo.canvasWidth,
+        renderedCanvasHeight: nextDebugInfo.canvasHeight,
+        canvasParentWidth: nextDebugInfo.canvasParentWidth,
+        canvasParentHeight: nextDebugInfo.canvasParentHeight,
+        canvasScale: `${nextDebugInfo.scaleX} / ${nextDebugInfo.scaleY}`,
+        screenClasses: screenRef.current?.className ?? "",
+        shellClasses: shellRef.current?.className ?? "",
+        canvasCardClasses: canvasCardElement.className,
+        canvasClasses: canvasElement.className,
+      });
+
+      setDebugInfo(nextDebugInfo);
+    };
+
+    updateDebugInfo();
+    window.addEventListener("resize", updateDebugInfo);
+    window.addEventListener("orientationchange", updateDebugInfo);
+    return () => {
+      window.removeEventListener("resize", updateDebugInfo);
+      window.removeEventListener("orientationchange", updateDebugInfo);
+    };
+  }, [layout, layoutResolution.source]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isFormField =
@@ -192,8 +280,8 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
   }, [nudgeSelectedPart, nudgeStep]);
 
   return (
-    <main className="screen layout-editor-screen">
-      <section className="layout-editor-shell">
+    <main ref={screenRef} className="screen layout-editor-screen">
+      <section ref={shellRef} className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
             <p className="layout-editor-kicker">Developer Tool Active</p>
@@ -230,7 +318,13 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
         </header>
 
         <div className="layout-editor-grid">
-          <section className="layout-editor-canvas-card" onPointerMove={handleCanvasPointerMove} onPointerUp={handleCanvasPointerUp} onPointerCancel={handleCanvasPointerUp}>
+          <section
+            ref={canvasCardRef}
+            className="layout-editor-canvas-card"
+            onPointerMove={handleCanvasPointerMove}
+            onPointerUp={handleCanvasPointerUp}
+            onPointerCancel={handleCanvasPointerUp}
+          >
             <WeaponCanvas
               debug={debugMode}
               ghostMode={ghostMode}
@@ -395,6 +489,23 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
             </div>
           </aside>
         </div>
+
+        {debugInfo ? (
+          <div className="assembly-debug-overlay">
+            <div>layout source: {layoutResolution.source}</div>
+            <div>layout version: {layout.layoutVersion}</div>
+            <div>canvas logical: {layout.canvasWidth} x {layout.canvasHeight}</div>
+            <div>weaponFrame: x {layout.parts.weaponFrame.x}, y {layout.parts.weaponFrame.y}, scale {layout.parts.weaponFrame.scale}</div>
+            <div>
+              weaponMagazine: x {layout.parts.weaponMagazine.x}, y {layout.parts.weaponMagazine.y}, scale{" "}
+              {layout.parts.weaponMagazine.scale}
+            </div>
+            <div>weaponSlide: x {layout.parts.weaponSlide.x}, y {layout.parts.weaponSlide.y}, scale {layout.parts.weaponSlide.scale}</div>
+            <div>canvas: {debugInfo.canvasWidth} x {debugInfo.canvasHeight}</div>
+            <div>canvas parent: {debugInfo.canvasParentWidth} x {debugInfo.canvasParentHeight}</div>
+            <div>canvas scale: {debugInfo.scaleX} / {debugInfo.scaleY}</div>
+          </div>
+        ) : null}
       </section>
     </main>
   );

@@ -5,22 +5,22 @@
   "parts": {
     "weaponFrame": {
       "x": 800,
-      "y": 450,
-      "scale": 1.25,
+      "y": 475,
+      "scale": 1.88,
       "rotation": 0,
       "zIndex": 2
     },
     "weaponMagazine": {
-      "x": 921.15,
-      "y": 490.93,
-      "scale": 1.4,
+      "x": 984.15,
+      "y": 536.93,
+      "scale": 2.1,
       "rotation": 0,
       "zIndex": 1
     },
     "weaponSlide": {
-      "x": 781.53,
-      "y": 296.28,
-      "scale": 1.33,
+      "x": 773.53,
+      "y": 240.28,
+      "scale": 1.995,
       "rotation": 0,
       "zIndex": 3
     }

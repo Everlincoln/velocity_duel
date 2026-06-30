@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
@@ -16,6 +17,22 @@ type Props = {
 };
 
 type AssemblyStep = "magazine" | "slide" | "complete";
+
+type AssemblyDebugInfo = {
+  viewportWidth: number;
+  viewportHeight: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  canvasParentWidth: number;
+  canvasParentHeight: number;
+  scaleX: number;
+  scaleY: number;
+  screenClasses: string;
+  shellClasses: string;
+  canvasCardClasses: string;
+  canvasClasses: string;
+  activeBreakpoints: string[];
+};
 
 const MAGAZINE_START = { x: 320, y: 690 };
 const SLIDE_START = { x: 1260, y: 250 };
@@ -56,10 +73,14 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   const [installedParts, setInstalledParts] = useState<WeaponPartId[]>([]);
   const [draggingPartId, setDraggingPartId] = useState<WeaponPartId | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [debugInfo, setDebugInfo] = useState<AssemblyDebugInfo | null>(null);
   const [partPositions, setPartPositions] = useState<Partial<Record<WeaponPartId, { x: number; y: number }>>>({
     weaponMagazine: MAGAZINE_START,
     weaponSlide: SLIDE_START,
   });
+  const screenRef = useRef<HTMLElement | null>(null);
+  const shellRef = useRef<HTMLElement | null>(null);
+  const canvasCardRef = useRef<HTMLElement | null>(null);
 
   const activePartId: WeaponPartId | null =
     step === "magazine" ? "weaponMagazine" : step === "slide" ? "weaponSlide" : null;
@@ -95,6 +116,61 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       canvasHeight: targetLayout.canvasHeight,
     });
   }, [layoutResolution.source, targetLayout]);
+
+  useEffect(() => {
+    const updateDebugInfo = () => {
+      const screenElement = screenRef.current;
+      const shellElement = shellRef.current;
+      const canvasCardElement = canvasCardRef.current;
+      const canvasElement = canvasCardElement?.querySelector(".weapon-canvas") as HTMLDivElement | null;
+
+      if (!screenElement || !shellElement || !canvasCardElement || !canvasElement) {
+        return;
+      }
+
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const canvasParentRect = canvasCardElement.getBoundingClientRect();
+
+      const nextDebugInfo: AssemblyDebugInfo = {
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        canvasWidth: Number(canvasRect.width.toFixed(2)),
+        canvasHeight: Number(canvasRect.height.toFixed(2)),
+        canvasParentWidth: Number(canvasParentRect.width.toFixed(2)),
+        canvasParentHeight: Number(canvasParentRect.height.toFixed(2)),
+        scaleX: Number((canvasRect.width / WEAPON_CANVAS_WIDTH).toFixed(4)),
+        scaleY: Number((canvasRect.height / WEAPON_CANVAS_HEIGHT).toFixed(4)),
+        screenClasses: screenElement.className,
+        shellClasses: shellElement.className,
+        canvasCardClasses: canvasCardElement.className,
+        canvasClasses: canvasElement.className,
+        activeBreakpoints: [
+          window.matchMedia("(max-width: 900px)").matches ? "max-width:900" : "",
+          window.matchMedia("(max-width: 560px)").matches ? "max-width:560" : "",
+          window.matchMedia("(orientation: landscape) and (pointer: coarse) and (max-height: 560px)").matches
+            ? "landscape-coarse-max-height:560"
+            : "",
+          window.matchMedia("(orientation: portrait) and (pointer: coarse) and (max-width: 900px)").matches
+            ? "portrait-coarse-max-width:900"
+            : "",
+          window.matchMedia("(pointer: coarse)").matches ? "pointer:coarse" : "pointer:fine",
+          window.matchMedia("(orientation: landscape)").matches ? "orientation:landscape" : "orientation:portrait",
+        ].filter(Boolean),
+      };
+
+      console.log("[WeaponAssembly][size-debug]", nextDebugInfo);
+      setDebugInfo(nextDebugInfo);
+    };
+
+    updateDebugInfo();
+    window.addEventListener("resize", updateDebugInfo);
+    window.addEventListener("orientationchange", updateDebugInfo);
+
+    return () => {
+      window.removeEventListener("resize", updateDebugInfo);
+      window.removeEventListener("orientationchange", updateDebugInfo);
+    };
+  }, [step, layout, visiblePartIds]);
 
   useEffect(() => {
     if (step !== "complete") {
@@ -227,8 +303,8 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   };
 
   return (
-    <main className="screen weapon-mini-screen">
-      <section className="layout-editor-shell">
+    <main ref={screenRef} className="screen weapon-mini-screen">
+      <section ref={shellRef} className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
             <p className="layout-editor-kicker">Gameplay Assembly</p>
@@ -250,6 +326,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
         </header>
 
         <section
+          ref={canvasCardRef}
           className="layout-editor-canvas-card"
           onPointerMove={handleCanvasPointerMove}
           onPointerUp={handleCanvasPointerUp}
@@ -278,6 +355,20 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
           <p className="layout-editor-panel-kicker">Loaded Snap Targets</p>
           <pre className="layout-editor-json">{JSON.stringify(targetLayout, null, 2)}</pre>
         </div>
+
+        {debugInfo ? (
+          <div className="assembly-debug-overlay">
+            <div>viewport: {debugInfo.viewportWidth} x {debugInfo.viewportHeight}</div>
+            <div>canvas: {debugInfo.canvasWidth} x {debugInfo.canvasHeight}</div>
+            <div>canvas parent: {debugInfo.canvasParentWidth} x {debugInfo.canvasParentHeight}</div>
+            <div>canvas scale: {debugInfo.scaleX} / {debugInfo.scaleY}</div>
+            <div>screen classes: {debugInfo.screenClasses}</div>
+            <div>shell classes: {debugInfo.shellClasses}</div>
+            <div>canvas card classes: {debugInfo.canvasCardClasses}</div>
+            <div>canvas classes: {debugInfo.canvasClasses}</div>
+            <div>breakpoints: {debugInfo.activeBreakpoints.join(", ") || "none"}</div>
+          </div>
+        ) : null}
       </section>
     </main>
   );
