@@ -6,7 +6,9 @@ import WeaponCanvas from "../components/WeaponCanvas";
 import {
   resolveWeaponLayout,
   WEAPON_CANVAS_HEIGHT,
+  WEAPON_LAYOUT_STORAGE_KEY,
   WEAPON_CANVAS_WIDTH,
+  WEAPON_PARTS,
   type WeaponLayoutPreset,
   type WeaponPartId,
 } from "../components/weaponCanvasConfig";
@@ -19,6 +21,11 @@ type Props = {
 type AssemblyStep = "magazine" | "slide" | "complete";
 
 type AssemblyDebugInfo = {
+  step: AssemblyStep;
+  layoutSource: string;
+  layoutVersion: string;
+  expectedVisiblePartIds: WeaponPartId[];
+  actualVisiblePartIds: WeaponPartId[];
   viewportWidth: number;
   viewportHeight: number;
   canvasWidth: number;
@@ -32,6 +39,24 @@ type AssemblyDebugInfo = {
   canvasCardClasses: string;
   canvasClasses: string;
   activeBreakpoints: string[];
+  userAgent: string;
+  devicePixelRatio: number;
+  partRenderInfo: Array<{
+    partId: WeaponPartId;
+    logicalX: number;
+    logicalY: number;
+    logicalScale: number;
+    configuredWidth: number;
+    intrinsicWidth: number;
+    intrinsicHeight: number;
+    renderedWidth: number;
+    renderedHeight: number;
+    domLeft: number;
+    domTop: number;
+    domRight: number;
+    domBottom: number;
+    transformOrigin: string;
+  }>;
 };
 
 const MAGAZINE_START = { x: 320, y: 690 };
@@ -81,6 +106,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   const screenRef = useRef<HTMLElement | null>(null);
   const shellRef = useRef<HTMLElement | null>(null);
   const canvasCardRef = useRef<HTMLElement | null>(null);
+  const lastLoggedStepRef = useRef<AssemblyStep | null>(null);
 
   const activePartId: WeaponPartId | null =
     step === "magazine" ? "weaponMagazine" : step === "slide" ? "weaponSlide" : null;
@@ -130,8 +156,40 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
 
       const canvasRect = canvasElement.getBoundingClientRect();
       const canvasParentRect = canvasCardElement.getBoundingClientRect();
+      const actualVisiblePartIds = Array.from(canvasElement.querySelectorAll("[data-part-id]"))
+        .map((element) => element.getAttribute("data-part-id"))
+        .filter((partId): partId is WeaponPartId => Boolean(partId));
+      const partRenderInfo = WEAPON_PARTS.filter((part) => visiblePartIds.includes(part.id)).map((part) => {
+        const partElement = canvasElement.querySelector(`[data-part-id="${part.id}"]`) as HTMLButtonElement | null;
+        const imgElement = partElement?.querySelector("img") as HTMLImageElement | null;
+        const visibleRect = imgElement?.getBoundingClientRect() ?? partElement?.getBoundingClientRect();
+        const computedStyle = partElement ? window.getComputedStyle(partElement) : null;
+        const partLayout = layout.parts[part.id];
+
+        return {
+          partId: part.id,
+          logicalX: partLayout.x,
+          logicalY: partLayout.y,
+          logicalScale: partLayout.scale,
+          configuredWidth: part.width,
+          intrinsicWidth: imgElement?.naturalWidth ?? 0,
+          intrinsicHeight: imgElement?.naturalHeight ?? 0,
+          renderedWidth: Number((visibleRect?.width ?? 0).toFixed(2)),
+          renderedHeight: Number((visibleRect?.height ?? 0).toFixed(2)),
+          domLeft: Number((visibleRect?.left ?? 0).toFixed(2)),
+          domTop: Number((visibleRect?.top ?? 0).toFixed(2)),
+          domRight: Number((visibleRect?.right ?? 0).toFixed(2)),
+          domBottom: Number((visibleRect?.bottom ?? 0).toFixed(2)),
+          transformOrigin: computedStyle?.transformOrigin ?? "",
+        };
+      });
 
       const nextDebugInfo: AssemblyDebugInfo = {
+        step,
+        layoutSource: layoutResolution.source,
+        layoutVersion: targetLayout.layoutVersion,
+        expectedVisiblePartIds: visiblePartIds,
+        actualVisiblePartIds,
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
         canvasWidth: Number(canvasRect.width.toFixed(2)),
@@ -144,6 +202,8 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
         shellClasses: shellElement.className,
         canvasCardClasses: canvasCardElement.className,
         canvasClasses: canvasElement.className,
+        userAgent: navigator.userAgent,
+        devicePixelRatio: window.devicePixelRatio,
         activeBreakpoints: [
           window.matchMedia("(max-width: 900px)").matches ? "max-width:900" : "",
           window.matchMedia("(max-width: 560px)").matches ? "max-width:560" : "",
@@ -156,9 +216,59 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
           window.matchMedia("(pointer: coarse)").matches ? "pointer:coarse" : "pointer:fine",
           window.matchMedia("(orientation: landscape)").matches ? "orientation:landscape" : "orientation:portrait",
         ].filter(Boolean),
+        partRenderInfo,
       };
 
-      console.log("[WeaponAssembly][size-debug]", nextDebugInfo);
+      const expectedVisiblePartIds = visiblePartIds;
+      const hasAllExpectedParts = expectedVisiblePartIds.every((partId) => actualVisiblePartIds.includes(partId));
+
+      if (hasAllExpectedParts && lastLoggedStepRef.current !== step) {
+        console.log("[WeaponAssembly][size-debug]", {
+          ...nextDebugInfo,
+        });
+        console.log("[WeaponAssembly][layout-compare]", {
+          step,
+          expectedVisiblePartIds,
+          actualVisiblePartIds,
+          layoutSource: layoutResolution.source,
+          layoutVersion: targetLayout.layoutVersion,
+          weaponFrame: {
+            x: targetLayout.parts.weaponFrame.x,
+            y: targetLayout.parts.weaponFrame.y,
+            scale: targetLayout.parts.weaponFrame.scale,
+          },
+          weaponMagazine: {
+            x: targetLayout.parts.weaponMagazine.x,
+            y: targetLayout.parts.weaponMagazine.y,
+            scale: targetLayout.parts.weaponMagazine.scale,
+          },
+          weaponSlide: {
+            x: targetLayout.parts.weaponSlide.x,
+            y: targetLayout.parts.weaponSlide.y,
+            scale: targetLayout.parts.weaponSlide.scale,
+          },
+          userAgent: navigator.userAgent,
+          devicePixelRatio: window.devicePixelRatio,
+          parts: partRenderInfo.map((part) => ({
+            partId: part.partId,
+            logicalX: part.logicalX,
+            logicalY: part.logicalY,
+            logicalScale: part.logicalScale,
+            intrinsicWidth: part.intrinsicWidth,
+            intrinsicHeight: part.intrinsicHeight,
+            renderedWidth: part.renderedWidth,
+            renderedHeight: part.renderedHeight,
+            boundingRect: {
+              left: part.domLeft,
+              top: part.domTop,
+              right: part.domRight,
+              bottom: part.domBottom,
+            },
+            transformOrigin: part.transformOrigin,
+          })),
+        });
+        lastLoggedStepRef.current = step;
+      }
       setDebugInfo(nextDebugInfo);
     };
 
@@ -170,7 +280,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       window.removeEventListener("resize", updateDebugInfo);
       window.removeEventListener("orientationchange", updateDebugInfo);
     };
-  }, [step, layout, visiblePartIds]);
+  }, [layout, layoutResolution.source, step, targetLayout, visiblePartIds]);
 
   useEffect(() => {
     if (step !== "complete") {
@@ -302,6 +412,38 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     setDraggingPartId(null);
   };
 
+  const handleClearWeaponLayoutAndReload = () => {
+    window.localStorage.removeItem(WEAPON_LAYOUT_STORAGE_KEY);
+    window.location.reload();
+  };
+
+  const layoutComparePayload = debugInfo
+    ? {
+        step: debugInfo.step,
+        userAgent: debugInfo.userAgent,
+        devicePixelRatio: debugInfo.devicePixelRatio,
+        layoutSource: debugInfo.layoutSource,
+        layoutVersion: debugInfo.layoutVersion,
+        expectedVisiblePartIds: debugInfo.expectedVisiblePartIds,
+        actualVisiblePartIds: debugInfo.actualVisiblePartIds,
+        parts: debugInfo.partRenderInfo.map((part) => ({
+          partId: part.partId,
+          logicalX: part.logicalX,
+          logicalY: part.logicalY,
+          logicalScale: part.logicalScale,
+          renderedWidth: part.renderedWidth,
+          renderedHeight: part.renderedHeight,
+          boundingRect: {
+            left: part.domLeft,
+            top: part.domTop,
+            right: part.domRight,
+            bottom: part.domBottom,
+          },
+          transformOrigin: part.transformOrigin,
+        })),
+      }
+    : null;
+
   return (
     <main ref={screenRef} className="screen weapon-mini-screen">
       <section ref={shellRef} className="layout-editor-shell">
@@ -358,15 +500,12 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
 
         {debugInfo ? (
           <div className="assembly-debug-overlay">
-            <div>viewport: {debugInfo.viewportWidth} x {debugInfo.viewportHeight}</div>
-            <div>canvas: {debugInfo.canvasWidth} x {debugInfo.canvasHeight}</div>
-            <div>canvas parent: {debugInfo.canvasParentWidth} x {debugInfo.canvasParentHeight}</div>
-            <div>canvas scale: {debugInfo.scaleX} / {debugInfo.scaleY}</div>
-            <div>screen classes: {debugInfo.screenClasses}</div>
-            <div>shell classes: {debugInfo.shellClasses}</div>
-            <div>canvas card classes: {debugInfo.canvasCardClasses}</div>
-            <div>canvas classes: {debugInfo.canvasClasses}</div>
-            <div>breakpoints: {debugInfo.activeBreakpoints.join(", ") || "none"}</div>
+            <button type="button" className="assembly-debug-button" onClick={handleClearWeaponLayoutAndReload}>
+              Clear Weapon localStorage and Reload
+            </button>
+            <pre className="assembly-debug-json">
+              {layoutComparePayload ? JSON.stringify(layoutComparePayload, null, 2) : ""}
+            </pre>
           </div>
         ) : null}
       </section>

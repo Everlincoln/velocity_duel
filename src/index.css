@@ -755,8 +755,28 @@ body::before {
   font-size: 0.72rem;
   line-height: 1.28;
   box-shadow: 0 8px 24px rgba(12, 24, 46, 0.24);
-  pointer-events: none;
+  pointer-events: auto;
   word-break: break-word;
+}
+
+.assembly-debug-button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f2f8ff;
+  font: inherit;
+  font-weight: 700;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.assembly-debug-json {
+  margin: 0;
+  white-space: pre-wrap;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .weapon-mini-screen-shake {
@@ -1310,6 +1330,10 @@ body::before {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
   gap: 22px;
+}
+
+.layout-editor-grid.is-preview-layout {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .layout-editor-canvas-card,

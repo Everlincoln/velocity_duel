@@ -44,6 +44,7 @@ function WeaponCanvas({
             <button
               key={part.id}
               type="button"
+              data-part-id={part.id}
               className={`weapon-canvas-part ${partClassName} ${isSelected ? "is-selected" : ""} ${ghostMode ? "is-ghost" : ""}`}
               style={{
                 left: `${(partLayout.x / layout.canvasWidth) * 100}%`,

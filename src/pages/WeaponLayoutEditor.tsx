@@ -31,6 +31,7 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
   const [selectedPartId, setSelectedPartId] = useState<WeaponPartId>("weaponMagazine");
   const [ghostMode, setGhostMode] = useState(false);
   const [debugMode, setDebugMode] = useState(true);
+  const [previewMode, setPreviewMode] = useState(false);
   const [layoutResolution] = useState(() => resolveWeaponLayout());
   const [layout, setLayout] = useState<WeaponLayoutPreset>(() => layoutResolution.layout);
   const [savedLayoutJson, setSavedLayoutJson] = useState("");
@@ -280,7 +281,7 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
   }, [nudgeSelectedPart, nudgeStep]);
 
   return (
-    <main ref={screenRef} className="screen layout-editor-screen">
+    <main ref={screenRef} className={`screen layout-editor-screen ${previewMode ? "is-preview-mode" : ""}`}>
       <section ref={shellRef} className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
@@ -293,14 +294,18 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
 
           <div className="layout-editor-actions">
             <label className="layout-editor-toggle">
+              <input type="checkbox" checked={previewMode} onChange={(event) => setPreviewMode(event.target.checked)} />
+              <span>Preview mode</span>
+            </label>
+            <label className="layout-editor-toggle" style={previewMode ? { display: "none" } : undefined}>
               <input type="checkbox" checked={ghostMode} onChange={(event) => setGhostMode(event.target.checked)} />
               <span>Ghost mode</span>
             </label>
-            <label className="layout-editor-toggle">
+            <label className="layout-editor-toggle" style={previewMode ? { display: "none" } : undefined}>
               <input type="checkbox" checked={debugMode} onChange={(event) => setDebugMode(event.target.checked)} />
               <span>Debug overlay</span>
             </label>
-            <label className="layout-editor-toggle">
+            <label className="layout-editor-toggle" style={previewMode ? { display: "none" } : undefined}>
               <input type="checkbox" checked={testMode} onChange={(event) => setTestMode(event.target.checked)} />
               <span>Test mode</span>
             </label>
@@ -317,27 +322,29 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
           </div>
         </header>
 
-        <div className="layout-editor-grid">
+        <div className={`layout-editor-grid ${previewMode ? "is-preview-layout" : ""}`}>
           <section
             ref={canvasCardRef}
             className="layout-editor-canvas-card"
-            onPointerMove={handleCanvasPointerMove}
-            onPointerUp={handleCanvasPointerUp}
-            onPointerCancel={handleCanvasPointerUp}
+            onPointerMove={previewMode ? undefined : handleCanvasPointerMove}
+            onPointerUp={previewMode ? undefined : handleCanvasPointerUp}
+            onPointerCancel={previewMode ? undefined : handleCanvasPointerUp}
           >
             <WeaponCanvas
-              debug={debugMode}
-              ghostMode={ghostMode}
+              debug={previewMode ? false : debugMode}
+              ghostMode={previewMode ? false : ghostMode}
               layout={layout}
-              onPartPointerDown={testMode ? undefined : handlePartPointerDown}
-              onPartSelect={setSelectedPartId}
-              partClassName={testMode ? "is-readonly" : ""}
-              selectedPartId={selectedPartId}
-              snapTarget={debugMode ? { partId: selectedPartId, x: selectedLayout.x, y: selectedLayout.y } : null}
+              onPartPointerDown={previewMode || testMode ? undefined : handlePartPointerDown}
+              onPartSelect={previewMode ? undefined : setSelectedPartId}
+              partClassName={previewMode || testMode ? "is-readonly" : ""}
+              selectedPartId={previewMode ? null : selectedPartId}
+              showLabels={!previewMode}
+              snapTarget={previewMode || !debugMode ? null : { partId: selectedPartId, x: selectedLayout.x, y: selectedLayout.y }}
             />
           </section>
 
-          <aside className="layout-editor-panel">
+          {!previewMode ? (
+            <aside className="layout-editor-panel">
             <div className="layout-editor-card layout-editor-selected-card">
               <p className="layout-editor-panel-kicker">Selected Part</p>
               <h2 className="layout-editor-panel-title">{selectedPart.label}</h2>
@@ -487,7 +494,8 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
               </p>
               <pre className="layout-editor-json">{savedLayoutJson || "Click Save Layout to display the exported JSON here."}</pre>
             </div>
-          </aside>
+            </aside>
+          ) : null}
         </div>
 
         {debugInfo ? (
