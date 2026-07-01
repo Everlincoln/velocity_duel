@@ -499,7 +499,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
         </div>
 
         {debugInfo ? (
-          <div className="assembly-debug-overlay">
+          <div className="assembly-debug-overlay" style={{ display: "none" }}>
             <button type="button" className="assembly-debug-button" onClick={handleClearWeaponLayoutAndReload}>
               Clear Weapon localStorage and Reload
             </button>
