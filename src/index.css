@@ -1503,15 +1503,50 @@ body::before {
 }
 
 .fire-phase-screen {
+  width: 100vw;
+  min-height: 100dvh;
+  height: 100dvh;
+  padding:
+    max(8px, env(safe-area-inset-top))
+    max(10px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(10px, env(safe-area-inset-left));
   background: var(--game-background-create-room);
+  overflow: hidden;
 }
 
 .fire-phase-screen-shake {
   animation: assembly-shake 240ms linear;
 }
 
+.fire-phase-screen .layout-editor-shell {
+  width: min(100%, 1320px);
+  min-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.fire-phase-screen .layout-editor-topbar {
+  min-height: 0;
+}
+
 .fire-phase-card {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
   overflow: visible;
+}
+
+.fire-phase-card .weapon-canvas {
+  width: min(100%, calc((100dvh - 170px) * 1.7778));
+  max-width: 100%;
+}
+
+.fire-phase-card .weapon-canvas-stage {
+  inset: 10px;
 }
 
 .fire-phase-card .weapon-canvas-part {
@@ -3081,6 +3116,51 @@ body::before {
 }
 
 @media (orientation: portrait) and (pointer: coarse) and (max-width: 900px) {
+  .fire-phase-screen {
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .fire-phase-screen .layout-editor-shell {
+    min-height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
+    gap: 8px;
+  }
+
+  .fire-phase-screen .layout-editor-topbar {
+    gap: 8px;
+  }
+
+  .fire-phase-card {
+    min-height: 0;
+  }
+
+  .fire-phase-card .weapon-canvas {
+    width: min(100%, calc((100dvh - 150px) * 1.7778));
+  }
+
+  .fire-phase-card .weapon-canvas-stage {
+    inset: 8px;
+  }
+
+  .fire-phase-overlay {
+    inset: auto 0 20px;
+    gap: 8px;
+  }
+
+  .fire-phase-instruction {
+    padding: 10px 18px;
+    font-size: clamp(1.15rem, 5vw, 1.8rem);
+  }
+
+  .fire-phase-fallback,
+  .fire-phase-reaction {
+    padding: 6px 12px;
+    font-size: 0.76rem;
+  }
+
   .weapon-mini-screen {
     padding: 10px 8px;
   }
