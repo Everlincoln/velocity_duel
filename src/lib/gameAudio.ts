@@ -33,23 +33,6 @@ export function unlockGameAudio() {
     const soundId = soundKey as GameSoundId;
     const audio = getAudio(soundId);
     audio.load();
-
-    const restoreVolume = audio.volume;
-    audio.volume = 0;
-    const unlockAttempt = audio.play();
-    if (unlockAttempt) {
-      void unlockAttempt
-        .then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.volume = restoreVolume;
-        })
-        .catch(() => {
-          audio.volume = restoreVolume;
-        });
-    } else {
-      audio.volume = restoreVolume;
-    }
   });
 }
 

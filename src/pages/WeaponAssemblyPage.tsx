@@ -106,6 +106,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   });
   const activePointerIdRef = useRef<number | null>(null);
   const capturedElementRef = useRef<HTMLButtonElement | null>(null);
+  const playedSnapSoundRef = useRef<Set<WeaponPartId>>(new Set());
   const screenRef = useRef<HTMLElement | null>(null);
   const shellRef = useRef<HTMLElement | null>(null);
   const canvasCardRef = useRef<HTMLElement | null>(null);
@@ -345,10 +346,13 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     setDraggingPartId(null);
     activePointerIdRef.current = null;
     capturedElementRef.current = null;
-    if (partId === "weaponMagazine") {
-      playGameSound("magazine-click");
-    } else if (partId === "weaponSlide") {
-      playGameSound("slide-rack");
+    if (!playedSnapSoundRef.current.has(partId)) {
+      playedSnapSoundRef.current.add(partId);
+      if (partId === "weaponMagazine") {
+        playGameSound("magazine-click");
+      } else if (partId === "weaponSlide") {
+        playGameSound("slide-rack");
+      }
     }
 
     if (partId === "weaponMagazine") {
