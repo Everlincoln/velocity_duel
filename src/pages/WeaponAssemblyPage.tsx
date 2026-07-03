@@ -3,6 +3,7 @@ import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
+import { playGameSound, unlockGameAudio } from "../lib/gameAudio";
 import {
   resolveWeaponLayout,
   WEAPON_CANVAS_HEIGHT,
@@ -344,6 +345,11 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     setDraggingPartId(null);
     activePointerIdRef.current = null;
     capturedElementRef.current = null;
+    if (partId === "weaponMagazine") {
+      playGameSound("magazine-click");
+    } else if (partId === "weaponSlide") {
+      playGameSound("slide-rack");
+    }
 
     if (partId === "weaponMagazine") {
       setStep("slide");
@@ -399,6 +405,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       x: point.x - current.x,
       y: point.y - current.y,
     });
+    unlockGameAudio();
     activePointerIdRef.current = event.pointerId;
     capturedElementRef.current = event.currentTarget;
     event.currentTarget.setPointerCapture(event.pointerId);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MotionPermissionState, Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
 import { readSavedWeaponLayout } from "../components/weaponCanvasConfig";
+import { playGameSound, unlockGameAudio } from "../lib/gameAudio";
 
 type Props = {
   motionPermission: MotionPermissionState;
@@ -11,33 +12,6 @@ type Props = {
 
 const SHAKE_THRESHOLD = 12;
 const ARMING_DELAY_MS = 800;
-
-function playFireSound() {
-  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextCtor) {
-    return;
-  }
-
-  const context = new AudioContextCtor();
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-
-  oscillator.type = "square";
-  oscillator.frequency.setValueAtTime(220, context.currentTime);
-  oscillator.frequency.exponentialRampToValueAtTime(70, context.currentTime + 0.16);
-
-  gain.gain.setValueAtTime(0.0001, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.22, context.currentTime + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
-
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-  oscillator.start();
-  oscillator.stop(context.currentTime + 0.2);
-  oscillator.onended = () => {
-    void context.close();
-  };
-}
 
 function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: Props) {
   const layout = useMemo(() => readSavedWeaponLayout(), []);
@@ -112,7 +86,7 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
       setIsRecoiling(true);
       setShowShake(true);
       setShowFlash(true);
-      playFireSound();
+      playGameSound("arcade-gunshot");
 
       if (navigator.vibrate) {
         navigator.vibrate([60, 30, 90]);
@@ -127,6 +101,7 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code === "Space") {
         event.preventDefault();
+        unlockGameAudio();
         handleFire("keyboard");
       }
     };
