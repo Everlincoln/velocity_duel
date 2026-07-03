@@ -12,14 +12,14 @@
     },
     "weaponMagazine": {
       "x": 984.15,
-      "y": 536.93,
+      "y": 537.93,
       "scale": 2.1,
       "rotation": 0,
       "zIndex": 1
     },
     "weaponSlide": {
       "x": 773.53,
-      "y": 240.28,
+      "y": 250.28,
       "scale": 1.995,
       "rotation": 0,
       "zIndex": 3
