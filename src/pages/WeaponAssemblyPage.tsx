@@ -103,6 +103,8 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     weaponMagazine: MAGAZINE_START,
     weaponSlide: SLIDE_START,
   });
+  const activePointerIdRef = useRef<number | null>(null);
+  const capturedElementRef = useRef<HTMLButtonElement | null>(null);
   const screenRef = useRef<HTMLElement | null>(null);
   const shellRef = useRef<HTMLElement | null>(null);
   const canvasCardRef = useRef<HTMLElement | null>(null);
@@ -330,10 +332,18 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   };
 
   const completeStep = (partId: WeaponPartId) => {
+    const capturedElement = capturedElementRef.current;
+    const pointerId = activePointerIdRef.current;
+    if (capturedElement && pointerId !== null && capturedElement.hasPointerCapture(pointerId)) {
+      capturedElement.releasePointerCapture(pointerId);
+    }
+
     const targetPart = targetLayout.parts[partId];
     updatePartPosition(partId, targetPart.x, targetPart.y);
     setInstalledParts((current) => (current.includes(partId) ? current : [...current, partId]));
     setDraggingPartId(null);
+    activePointerIdRef.current = null;
+    capturedElementRef.current = null;
 
     if (partId === "weaponMagazine") {
       setStep("slide");
@@ -389,6 +399,8 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       x: point.x - current.x,
       y: point.y - current.y,
     });
+    activePointerIdRef.current = event.pointerId;
+    capturedElementRef.current = event.currentTarget;
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
@@ -408,7 +420,34 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     maybeSnapPart(draggingPartId, nextX, nextY);
   };
 
+  const releaseCapturedPointer = () => {
+    const capturedElement = capturedElementRef.current;
+    const pointerId = activePointerIdRef.current;
+
+    if (capturedElement && pointerId !== null && capturedElement.hasPointerCapture(pointerId)) {
+      capturedElement.releasePointerCapture(pointerId);
+    }
+
+    activePointerIdRef.current = null;
+    capturedElementRef.current = null;
+  };
+
   const handleCanvasPointerUp = () => {
+    releaseCapturedPointer();
+    setDraggingPartId(null);
+  };
+
+  const handlePartPointerUp = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (draggingPartId !== partId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    activePointerIdRef.current = null;
+    capturedElementRef.current = null;
     setDraggingPartId(null);
   };
 
@@ -478,6 +517,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
             debug={debugMode}
             layout={layout}
             onPartPointerDown={handlePartPointerDown}
+            onPartPointerUp={handlePartPointerUp}
             partClassName={step === "complete" ? "is-readonly" : ""}
             selectedPartId={activePartId}
             snapTarget={

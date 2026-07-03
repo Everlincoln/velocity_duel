@@ -6,6 +6,7 @@ type WeaponCanvasProps = {
   ghostMode?: boolean;
   layout: WeaponLayoutPreset;
   onPartPointerDown?: (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onPartPointerUp?: (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => void;
   onPartSelect?: (partId: WeaponPartId) => void;
   partClassName?: string;
   selectedPartId?: WeaponPartId | null;
@@ -19,6 +20,7 @@ function WeaponCanvas({
   ghostMode = false,
   layout,
   onPartPointerDown,
+  onPartPointerUp,
   onPartSelect,
   partClassName = "",
   selectedPartId = null,
@@ -55,6 +57,8 @@ function WeaponCanvas({
               }}
               onClick={() => onPartSelect?.(part.id)}
               onPointerDown={(event) => onPartPointerDown?.(part.id, event)}
+              onPointerUp={(event) => onPartPointerUp?.(part.id, event)}
+              onPointerCancel={(event) => onPartPointerUp?.(part.id, event)}
             >
               <img src={part.src} alt={part.label} />
               {showLabels ? <span className="weapon-canvas-part-label">{part.label}</span> : null}
