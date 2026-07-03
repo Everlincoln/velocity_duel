@@ -9,24 +9,8 @@ type Props = {
   setReactionTimeMs: (value: number | null) => void;
 };
 
-type MotionSample = {
-  count: number;
-  magnitude: number;
-  maxMagnitude: number;
-  x: number;
-  y: number;
-  z: number;
-};
-
 const SHAKE_THRESHOLD = 12;
-const EMPTY_SAMPLE: MotionSample = {
-  count: 0,
-  magnitude: 0,
-  maxMagnitude: 0,
-  x: 0,
-  y: 0,
-  z: 0,
-};
+const ARMING_DELAY_MS = 800;
 
 function playFireSound() {
   const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -62,25 +46,66 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
   const [showFlash, setShowFlash] = useState(false);
   const [showShake, setShowShake] = useState(false);
   const [reactionMs, setReactionMs] = useState<number | null>(null);
-  const [motionSample, setMotionSample] = useState<MotionSample>(EMPTY_SAMPLE);
   const startTimeRef = useRef<number>(0);
+  const hasFiredRef = useRef(false);
+  const isArmedRef = useRef(false);
+  const hasBaselineRef = useRef(false);
+  const lastAccelerationRef = useRef({ x: 0, y: 0, z: 0 });
+  const recoilTimeoutRef = useRef<number | null>(null);
+  const shakeTimeoutRef = useRef<number | null>(null);
+  const flashTimeoutRef = useRef<number | null>(null);
+  const resultTimeoutRef = useRef<number | null>(null);
+  const armTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
+    console.log("[FirePhase] reset fire state");
+    console.log("[FirePhase] mount");
     setReactionTimeMs(null);
+    setIsFired(false);
+    setIsRecoiling(false);
+    setShowFlash(false);
+    setShowShake(false);
+    setReactionMs(null);
     startTimeRef.current = performance.now();
+    hasFiredRef.current = false;
+    isArmedRef.current = false;
+    hasBaselineRef.current = false;
+    lastAccelerationRef.current = { x: 0, y: 0, z: 0 };
+
+    console.log("[FirePhase] arming delay start", { delayMs: ARMING_DELAY_MS });
+    armTimeoutRef.current = window.setTimeout(() => {
+      isArmedRef.current = true;
+      console.log("[FirePhase] armed");
+    }, ARMING_DELAY_MS);
+
+    return () => {
+      if (armTimeoutRef.current) {
+        window.clearTimeout(armTimeoutRef.current);
+      }
+      if (recoilTimeoutRef.current) {
+        window.clearTimeout(recoilTimeoutRef.current);
+      }
+      if (shakeTimeoutRef.current) {
+        window.clearTimeout(shakeTimeoutRef.current);
+      }
+      if (flashTimeoutRef.current) {
+        window.clearTimeout(flashTimeoutRef.current);
+      }
+      if (resultTimeoutRef.current) {
+        window.clearTimeout(resultTimeoutRef.current);
+      }
+    };
   }, [setReactionTimeMs]);
 
   useEffect(() => {
-    if (isFired) {
-      return;
-    }
-
-    const handleFire = () => {
-      if (isFired) {
+    const handleFire = (source: "motion" | "keyboard") => {
+      if (hasFiredRef.current) {
         return;
       }
 
       const elapsed = Math.max(1, Math.round(performance.now() - startTimeRef.current));
+      console.log("[FirePhase] fire triggered", { source, elapsedMs: elapsed });
+      hasFiredRef.current = true;
       setIsFired(true);
       setReactionMs(elapsed);
       setReactionTimeMs(elapsed);
@@ -93,16 +118,16 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
         navigator.vibrate([60, 30, 90]);
       }
 
-      window.setTimeout(() => setIsRecoiling(false), 220);
-      window.setTimeout(() => setShowShake(false), 320);
-      window.setTimeout(() => setShowFlash(false), 180);
-      window.setTimeout(() => setCurrentPage("result"), 1100);
+      recoilTimeoutRef.current = window.setTimeout(() => setIsRecoiling(false), 220);
+      shakeTimeoutRef.current = window.setTimeout(() => setShowShake(false), 320);
+      flashTimeoutRef.current = window.setTimeout(() => setShowFlash(false), 180);
+      resultTimeoutRef.current = window.setTimeout(() => setCurrentPage("result"), 1100);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code === "Space") {
         event.preventDefault();
-        handleFire();
+        handleFire("keyboard");
       }
     };
 
@@ -112,18 +137,29 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
       const y = acceleration?.y ?? 0;
       const z = acceleration?.z ?? 0;
       const intensity = Math.sqrt(x * x + y * y + z * z);
+      const previous = lastAccelerationRef.current;
+      const deltaX = x - previous.x;
+      const deltaY = y - previous.y;
+      const deltaZ = z - previous.z;
+      const deltaMagnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 
-      setMotionSample((current) => ({
-        count: current.count + 1,
-        x,
-        y,
-        z,
-        magnitude: intensity,
-        maxMagnitude: Math.max(current.maxMagnitude, intensity),
-      }));
+      lastAccelerationRef.current = { x, y, z };
 
-      if (intensity > SHAKE_THRESHOLD) {
-        handleFire();
+      if (!hasBaselineRef.current) {
+        hasBaselineRef.current = true;
+        return;
+      }
+
+      if (!isArmedRef.current) {
+        console.log("[FirePhase] motion ignored during warm-up", {
+          magnitude: Number(intensity.toFixed(3)),
+          deltaMagnitude: Number(deltaMagnitude.toFixed(3)),
+        });
+        return;
+      }
+
+      if (deltaMagnitude > SHAKE_THRESHOLD) {
+        handleFire("motion");
       }
     };
 
@@ -133,10 +169,11 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
     }
 
     return () => {
+      console.log("[FirePhase] cleanup motion listeners");
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("devicemotion", handleMotion);
     };
-  }, [isFired, motionPermission, setCurrentPage, setReactionTimeMs]);
+  }, [motionPermission, setCurrentPage, setReactionTimeMs]);
 
   const fallbackMessage =
     motionPermission === "granted"
@@ -146,7 +183,7 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
         : "Motion is not enabled here. Press Space to test firing on desktop.";
 
   return (
-    <main className={`screen fire-phase-screen ${showShake ? "fire-phase-screen-shake" : ""}`}>
+    <main className={`screen fire-phase-screen ${showShake ? "fire-phase-screen-shake" : ""} ${isFired ? "is-fired" : ""}`}>
       <section className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
@@ -175,40 +212,6 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
             {reactionMs ? <div className="fire-phase-reaction">Fired in {reactionMs} ms</div> : null}
           </div>
         </section>
-
-        <div className="layout-editor-card" style={{ display: "none" }}>
-          <p className="layout-editor-panel-kicker">Motion Debug</p>
-          <div className="motion-debug-panel">
-            <div className="motion-debug-row">
-              <strong>threshold</strong>
-              <code>{SHAKE_THRESHOLD}</code>
-            </div>
-            <div className="motion-debug-row">
-              <strong>event count</strong>
-              <code>{motionSample.count}</code>
-            </div>
-            <div className="motion-debug-row">
-              <strong>x</strong>
-              <code>{motionSample.x.toFixed(3)}</code>
-            </div>
-            <div className="motion-debug-row">
-              <strong>y</strong>
-              <code>{motionSample.y.toFixed(3)}</code>
-            </div>
-            <div className="motion-debug-row">
-              <strong>z</strong>
-              <code>{motionSample.z.toFixed(3)}</code>
-            </div>
-            <div className="motion-debug-row">
-              <strong>magnitude</strong>
-              <code>{motionSample.magnitude.toFixed(3)}</code>
-            </div>
-            <div className="motion-debug-row">
-              <strong>max magnitude</strong>
-              <code>{motionSample.maxMagnitude.toFixed(3)}</code>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
   );
