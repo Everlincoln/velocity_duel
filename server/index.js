@@ -36,6 +36,7 @@ function createRoomState(roomCode) {
   return {
     roomCode,
     players: [],
+    resolved: false,
   };
 }
 
@@ -219,9 +220,14 @@ io.on("connection", (socket) => {
 
     player.ready = Boolean(ready);
     player.reactionTimeMs = null;
+    room.resolved = false;
     emitRoomUpdate(roomCode);
 
     if (room.players.length === 2 && room.players.every((entry) => entry.ready)) {
+      room.players.forEach((entry) => {
+        entry.reactionTimeMs = null;
+      });
+      room.resolved = false;
       io.to(roomCode).emit("bothPlayersReady", serializeRoom(room));
     }
 
@@ -252,25 +258,31 @@ io.on("connection", (socket) => {
       return;
     }
 
+    if (room.resolved) {
+      callback?.({ ok: true, room: serializeRoom(room) });
+      return;
+    }
+
     player.reactionTimeMs = typeof reactionTimeMs === "number" ? reactionTimeMs : null;
+    room.resolved = true;
+    room.players.forEach((entry) => {
+      entry.ready = false;
+    });
+
     io.to(roomCode).emit("playerFired", {
       playerNumber: player.playerNumber,
       reactionTimeMs: player.reactionTimeMs,
       room: serializeRoom(room),
     });
 
-    const firedPlayers = room.players.filter((entry) => typeof entry.reactionTimeMs === "number");
-    if (firedPlayers.length === 2) {
-      const sortedPlayers = [...firedPlayers].sort((a, b) => a.reactionTimeMs - b.reactionTimeMs);
-      const [winner, loser] = sortedPlayers;
-      io.to(roomCode).emit("gameResult", {
-        winnerPlayerNumber: winner.playerNumber,
-        winnerReactionTimeMs: winner.reactionTimeMs,
-        loserPlayerNumber: loser.playerNumber,
-        loserReactionTimeMs: loser.reactionTimeMs,
-        players: serializeRoom(room).players,
-      });
-    }
+    const loser = room.players.find((entry) => entry.socketId !== socket.id) ?? null;
+    io.to(roomCode).emit("gameResult", {
+      winnerPlayerNumber: player.playerNumber,
+      winnerReactionTimeMs: player.reactionTimeMs,
+      loserPlayerNumber: loser?.playerNumber ?? null,
+      loserReactionTimeMs: loser?.reactionTimeMs ?? null,
+      players: serializeRoom(room).players,
+    });
 
     callback?.({ ok: true, room: serializeRoom(room) });
   });

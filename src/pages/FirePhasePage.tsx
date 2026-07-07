@@ -3,9 +3,12 @@ import type { MotionPermissionState, Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
 import { readSavedWeaponLayout } from "../components/weaponCanvasConfig";
 import { playGameSound, unlockGameAudio } from "../lib/gameAudio";
+import { getSocket } from "../lib/socket";
 
 type Props = {
   motionPermission: MotionPermissionState;
+  roomCode: string;
+  useSocketFlow?: boolean;
   setCurrentPage: (page: Page) => void;
   setReactionTimeMs: (value: number | null) => void;
 };
@@ -13,8 +16,9 @@ type Props = {
 const SHAKE_THRESHOLD = 12;
 const ARMING_DELAY_MS = 800;
 
-function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: Props) {
+function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setCurrentPage, setReactionTimeMs }: Props) {
   const layout = useMemo(() => readSavedWeaponLayout(), []);
+  const socket = useMemo(() => getSocket(), []);
   const [isFired, setIsFired] = useState(false);
   const [isRecoiling, setIsRecoiling] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
@@ -95,7 +99,13 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
       recoilTimeoutRef.current = window.setTimeout(() => setIsRecoiling(false), 220);
       shakeTimeoutRef.current = window.setTimeout(() => setShowShake(false), 320);
       flashTimeoutRef.current = window.setTimeout(() => setShowFlash(false), 180);
-      resultTimeoutRef.current = window.setTimeout(() => setCurrentPage("result"), 1100);
+      if (useSocketFlow && socket.connected && roomCode) {
+        socket.emit("playerFired", { roomCode, reactionTimeMs: elapsed }, (result: { ok: boolean; error?: string }) => {
+          console.log("[socket] playerFired", result);
+        });
+      } else {
+        resultTimeoutRef.current = window.setTimeout(() => setCurrentPage("result"), 1100);
+      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -148,7 +158,7 @@ function FirePhasePage({ motionPermission, setCurrentPage, setReactionTimeMs }: 
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("devicemotion", handleMotion);
     };
-  }, [motionPermission, setCurrentPage, setReactionTimeMs]);
+  }, [motionPermission, roomCode, setCurrentPage, setReactionTimeMs, socket, useSocketFlow]);
 
   const fallbackMessage =
     motionPermission === "granted"

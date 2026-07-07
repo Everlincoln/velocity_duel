@@ -1,40 +1,33 @@
-import type { Page } from "../App";
+import type { DuelResult } from "../App";
 
 type Props = {
+  duelResult: DuelResult | null;
+  onBackHome: () => void;
+  onPlayAgain: () => void;
   reactionTimeMs: number | null;
-  setCurrentPage: (page: Page) => void;
 };
 
-function ResultPage({ reactionTimeMs, setCurrentPage }: Props) {
+function ResultPage({ duelResult, onBackHome, onPlayAgain, reactionTimeMs }: Props) {
+  const didWin = duelResult ? duelResult.outcome === "win" : true;
+  const title = didWin ? "YOU WIN" : "YOU LOSE";
+  const time = duelResult?.reactionTimeMs ?? reactionTimeMs;
+  const message = didWin
+    ? `You eliminated your opponent in ${time ?? "--"} ms.`
+    : `You were eliminated in ${time ?? "--"} ms.`;
+
   return (
-    <main className="screen">
-      <section className="shell stack-gap">
-        <article className="card card-lilac center-card">
-          <p className="kicker">Single Player Test Result</p>
-          <div className="winner-badge">FIRED!</div>
-          <h2 className="section-title">Reaction captured</h2>
-
-          <div className="results-grid">
-            <div className="result-chip">
-              <strong>{reactionTimeMs ?? "--"} ms</strong>
-              <span>Reaction time</span>
-            </div>
-            <div className="result-chip">
-              <strong>1 shot</strong>
-              <span>Assembly to fire flow works</span>
-            </div>
-          </div>
-
-          <p className="section-text">
-            This is the single-player firing test. Next we can layer the same flow into the two-player duel.
-          </p>
-
-          <div className="action-row center-actions">
-            <button className="button button-coral" onClick={() => setCurrentPage("assembly")}>
-              Play Again
+    <main className={`screen duel-result-screen ${didWin ? "is-win" : "is-lose"}`}>
+      <section className="duel-result-shell">
+        <article className="duel-result-card">
+          <h1 className="duel-result-title">{title}</h1>
+          <p className="duel-result-message">{message}</p>
+          <div className="duel-result-time">{time ?? "--"} ms</div>
+          <div className="duel-result-actions">
+            <button className="button button-yellow" onClick={onPlayAgain}>
+              PLAY AGAIN
             </button>
-            <button className="button button-cream" onClick={() => setCurrentPage("home")}>
-              Back Home
+            <button className="button button-blue" onClick={onBackHome}>
+              BACK HOME
             </button>
           </div>
         </article>

@@ -39,6 +39,12 @@ export type RoomPlayer = {
   reactionTimeMs: number | null;
 };
 
+export type DuelResult = {
+  outcome: "win" | "lose";
+  reactionTimeMs: number | null;
+  multiplayer: boolean;
+};
+
 type RoomStatePayload = {
   roomCode: string;
   players: RoomPlayer[];
@@ -112,6 +118,7 @@ function App() {
   const [motionReturnPage, setMotionReturnPage] = useState<Page>("home");
   const [roomPlayers, setRoomPlayers] = useState<RoomPlayer[]>([]);
   const [currentPlayerNumber, setCurrentPlayerNumber] = useState<1 | 2 | null>(null);
+  const [duelResult, setDuelResult] = useState<DuelResult | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [roomActionLoading, setRoomActionLoading] = useState(false);
   const [socketAvailable, setSocketAvailable] = useState(false);
@@ -143,6 +150,8 @@ function App() {
   const resetRoomSession = () => {
     setRoomPlayers([]);
     setCurrentPlayerNumber(null);
+    setDuelResult(null);
+    setReactionTimeMs(null);
     setRoomError(null);
     setRoomActionLoading(false);
   };
@@ -216,16 +225,19 @@ function App() {
     const nextRoomCode = roomCode || generateRoomCode();
     const nickname = resolveSessionNickname();
     setRoomCode(nextRoomCode);
+    setDuelResult(null);
+    setReactionTimeMs(null);
     setRoomError(null);
     setRoomActionLoading(true);
 
     const connected = await ensureSocketConnection();
     if (!connected) {
-      console.log("[socket] createRoom fallback", nextRoomCode);
+      console.log("[socket] createRoom connection failed", nextRoomCode);
       setSocketAvailable(false);
       resetRoomSession();
+      setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
       setRoomActionLoading(false);
-      setCurrentPage("ready");
+      setCurrentPage("home");
       return;
     }
 
@@ -253,6 +265,8 @@ function App() {
     const trimmedRoomCode = nextRoomCode.trim().toUpperCase();
     const validationError = getJoinRoomValidationError(trimmedRoomCode);
     const nickname = resolveSessionNickname();
+    setDuelResult(null);
+    setReactionTimeMs(null);
 
     if (validationError) {
       setRoomError(validationError);
@@ -266,11 +280,12 @@ function App() {
 
     const connected = await ensureSocketConnection();
     if (!connected) {
-      console.log("[socket] joinRoom fallback", trimmedRoomCode);
+      console.log("[socket] joinRoom connection failed", trimmedRoomCode);
       setSocketAvailable(false);
       resetRoomSession();
+      setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
       setRoomActionLoading(false);
-      setCurrentPage("ready");
+      setCurrentPage("join");
       return;
     }
 
@@ -330,6 +345,28 @@ function App() {
     resetRoomSession();
     setRoomCode(generateRoomCode());
     setCurrentPage("home");
+  };
+
+  const handlePlayAgain = () => {
+    setDuelResult(null);
+    setReactionTimeMs(null);
+
+    if (useSocketReadyFlow && socket.connected && currentPlayerNumber) {
+      socket.emit(
+        "playerReady",
+        { roomCode, ready: false },
+        (result: { ok: boolean; error?: string; room?: RoomStatePayload }) => {
+          console.log("[socket] resetForReplay", result);
+          if (!result?.ok) {
+            setRoomError(result?.error || "Unable to reset the room.");
+          }
+        },
+      );
+      setCurrentPage("ready");
+      return;
+    }
+
+    setCurrentPage("assembly");
   };
 
   useEffect(() => {
@@ -393,7 +430,35 @@ function App() {
       console.log("[socket] bothPlayersReady", room);
       setRoomCode(room.roomCode);
       setRoomPlayers(room.players);
+      setDuelResult(null);
+      setReactionTimeMs(null);
       setCurrentPage("assembly");
+    };
+
+    const handleGameResult = (payload: {
+      winnerPlayerNumber: 1 | 2;
+      winnerReactionTimeMs: number | null;
+      loserPlayerNumber: 1 | 2 | null;
+      loserReactionTimeMs: number | null;
+      players: RoomPlayer[];
+    }) => {
+      console.log("[socket] gameResult", payload);
+      setRoomPlayers(payload.players);
+
+      if (!currentPlayerNumber) {
+        return;
+      }
+
+      const didWin = payload.winnerPlayerNumber === currentPlayerNumber;
+      const visibleReactionTime = didWin ? payload.winnerReactionTimeMs : payload.winnerReactionTimeMs;
+
+      setDuelResult({
+        outcome: didWin ? "win" : "lose",
+        reactionTimeMs: visibleReactionTime,
+        multiplayer: true,
+      });
+      setReactionTimeMs(visibleReactionTime);
+      setCurrentPage("result");
     };
 
     socket.on("connect", handleConnect);
@@ -402,6 +467,7 @@ function App() {
     socket.on("playerJoined", handlePlayerJoined);
     socket.on("playerLeft", handlePlayerLeft);
     socket.on("bothPlayersReady", handleBothPlayersReady);
+    socket.on("gameResult", handleGameResult);
 
     return () => {
       socket.off("connect", handleConnect);
@@ -410,8 +476,9 @@ function App() {
       socket.off("playerJoined", handlePlayerJoined);
       socket.off("playerLeft", handlePlayerLeft);
       socket.off("bothPlayersReady", handleBothPlayersReady);
+      socket.off("gameResult", handleGameResult);
     };
-  }, [goToGameplayStart, socket]);
+  }, [currentPlayerNumber, goToGameplayStart, socket]);
 
   useEffect(() => {
     if (currentPage === "create" && !socketAvailable && roomPlayers.length === 0 && !currentPlayerNumber) {
@@ -450,6 +517,7 @@ function App() {
               setCurrentPage={setCurrentPage}
               onStartGame={handleCreateRoom}
               roomActionLoading={roomActionLoading}
+              roomError={roomError}
               nickname={nicknameInput}
               onNicknameChange={setNicknameInput}
             />
@@ -503,12 +571,19 @@ function App() {
           {currentPage === "fire" && (
             <FirePhasePage
               motionPermission={motionPermission}
+              roomCode={roomCode}
+              useSocketFlow={useSocketReadyFlow}
               setCurrentPage={setCurrentPage}
               setReactionTimeMs={setReactionTimeMs}
             />
           )}
           {currentPage === "result" && (
-            <ResultPage reactionTimeMs={reactionTimeMs} setCurrentPage={setCurrentPage} />
+            <ResultPage
+              duelResult={duelResult}
+              onBackHome={handleLeaveRoom}
+              onPlayAgain={handlePlayAgain}
+              reactionTimeMs={reactionTimeMs}
+            />
           )}
           {isDev && currentPage === "layout-editor" && <WeaponLayoutEditor setCurrentPage={setCurrentPage} />}
         </>

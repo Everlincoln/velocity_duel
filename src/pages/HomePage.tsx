@@ -5,11 +5,19 @@ type Props = {
   setCurrentPage: (page: Page) => void;
   onStartGame?: () => void;
   roomActionLoading?: boolean;
+  roomError?: string | null;
   nickname: string;
   onNicknameChange: (value: string) => void;
 };
 
-function HomePage({ setCurrentPage, onStartGame, roomActionLoading = false, nickname, onNicknameChange }: Props) {
+function HomePage({
+  setCurrentPage,
+  onStartGame,
+  roomActionLoading = false,
+  roomError = null,
+  nickname,
+  onNicknameChange,
+}: Props) {
   return (
     <main className="screen screen-home screen-home-simple">
       <section className="shell home-simple-shell">
@@ -52,6 +60,8 @@ function HomePage({ setCurrentPage, onStartGame, roomActionLoading = false, nick
                 JOIN ROOM
               </button>
             </div>
+
+            {roomError ? <p className="section-text join-room-message-error">{roomError}</p> : null}
           </div>
         </div>
       </section>
