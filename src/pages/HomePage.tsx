@@ -6,6 +6,7 @@ type Props = {
   onStartGame?: () => void;
   roomActionLoading?: boolean;
   roomError?: string | null;
+  socketDebugText?: string | null;
   nickname: string;
   onNicknameChange: (value: string) => void;
 };
@@ -15,6 +16,7 @@ function HomePage({
   onStartGame,
   roomActionLoading = false,
   roomError = null,
+  socketDebugText = null,
   nickname,
   onNicknameChange,
 }: Props) {
@@ -62,6 +64,9 @@ function HomePage({
             </div>
 
             {roomError ? <p className="section-text join-room-message-error">{roomError}</p> : null}
+            {socketDebugText ? (
+              <pre className="socket-debug-panel">{socketDebugText}</pre>
+            ) : null}
           </div>
         </div>
       </section>

@@ -7,6 +7,7 @@ type Props = {
   onJoinRoom?: (roomCode: string) => void;
   roomActionLoading?: boolean;
   roomError?: string | null;
+  socketDebugText?: string | null;
 };
 
 function JoinRoomPage({
@@ -15,6 +16,7 @@ function JoinRoomPage({
   onJoinRoom,
   roomActionLoading = false,
   roomError = null,
+  socketDebugText = null,
 }: Props) {
   const [joinCode, setJoinCode] = useState(roomCode);
 
@@ -43,6 +45,8 @@ function JoinRoomPage({
           <p className={`waiting-text join-room-message ${roomError ? "join-room-message-error" : ""}`}>
             {roomError ?? "Ask your friend for the room code."}
           </p>
+
+          {socketDebugText ? <pre className="socket-debug-panel">{socketDebugText}</pre> : null}
 
           <div className="join-room-actions">
             <button

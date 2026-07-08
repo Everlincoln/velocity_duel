@@ -50,6 +50,36 @@ type RoomStatePayload = {
   players: RoomPlayer[];
 };
 
+type SocketDebugInfo = {
+  timestamp: string;
+  action: "createRoom" | "joinRoom" | "general";
+  stage:
+    | "idle"
+    | "connect-start"
+    | "connect-success"
+    | "connect-error"
+    | "connect-timeout"
+    | "failed-before-emit"
+    | "emit-start"
+    | "emit-callback";
+  socketServerUrl: string;
+  browserUrl: string;
+  pageProtocol: string;
+  userAgent: string;
+  socketConnected: boolean;
+  socketId: string | null;
+  transportConfigured: string[];
+  activeTransport: string | null;
+  timedOut: boolean;
+  connectErrorMessage: string | null;
+  connectErrorName: string | null;
+  connectErrorDescription: string | null;
+  connectErrorContext: string | null;
+  failedBeforeEmit: boolean;
+  roomCode: string | null;
+  callbackPayload: unknown;
+};
+
 function generateRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
@@ -122,6 +152,7 @@ function App() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [roomActionLoading, setRoomActionLoading] = useState(false);
   const [socketAvailable, setSocketAvailable] = useState(false);
+  const [socketDebugInfo, setSocketDebugInfo] = useState<SocketDebugInfo | null>(null);
   const [nicknameInput, setNicknameInput] = useState("");
   const [sessionNickname, setSessionNickname] = useState("");
   const [fallbackOpponentNickname] = useState(() => generateFunNickname());
@@ -135,6 +166,50 @@ function App() {
   const isMobileSized = Math.min(viewport.width, viewport.height) < 900;
   const showRotateOverlay = isPortrait && isMobileSized;
   const useSocketReadyFlow = socketAvailable && currentPlayerNumber !== null && roomPlayers.length > 0;
+
+  const buildSocketDebugInfo = (
+    action: SocketDebugInfo["action"],
+    stage: SocketDebugInfo["stage"],
+    extras: Partial<SocketDebugInfo> = {},
+  ): SocketDebugInfo => {
+    const browserUrl = typeof window === "undefined" ? "" : window.location.href;
+    const pageProtocol = typeof window === "undefined" ? "" : window.location.protocol;
+    const userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent;
+    const activeTransport = socket.io.engine?.transport?.name ?? null;
+    const transportConfigured = Array.isArray(socket.io.opts.transports)
+      ? socket.io.opts.transports.map(String)
+      : [];
+
+    return {
+      timestamp: new Date().toISOString(),
+      action,
+      stage,
+      socketServerUrl: import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3001",
+      browserUrl,
+      pageProtocol,
+      userAgent,
+      socketConnected: socket.connected,
+      socketId: socket.id ?? null,
+      transportConfigured,
+      activeTransport,
+      timedOut: false,
+      connectErrorMessage: null,
+      connectErrorName: null,
+      connectErrorDescription: null,
+      connectErrorContext: null,
+      failedBeforeEmit: false,
+      roomCode: null,
+      callbackPayload: null,
+      ...extras,
+    };
+  };
+
+  const publishSocketDebug = (info: SocketDebugInfo) => {
+    console.log("[SocketDebug]", info);
+    setSocketDebugInfo(info);
+  };
+
+  const socketDebugText = socketDebugInfo ? JSON.stringify(socketDebugInfo, null, 2) : null;
 
   const goToGameplayStart = (nextPage: Page) => {
     if (motionPermission === "granted") {
@@ -174,8 +249,11 @@ function App() {
   };
 
   const ensureSocketConnection = async () => {
+    publishSocketDebug(buildSocketDebugInfo("general", "connect-start"));
+
     if (socket.connected) {
       setSocketAvailable(true);
+      publishSocketDebug(buildSocketDebugInfo("general", "connect-success"));
       return true;
     }
 
@@ -201,15 +279,37 @@ function App() {
 
       const handleConnect = () => {
         console.log("[socket] connected", socket.id);
+        publishSocketDebug(buildSocketDebugInfo("general", "connect-success"));
         finish(true);
       };
 
-      const handleError = (error: Error) => {
+      const handleError = (error: Error & { description?: unknown; context?: unknown; data?: unknown }) => {
         console.log("[socket] connect_error", error.message);
+        publishSocketDebug(
+          buildSocketDebugInfo("general", "connect-error", {
+            connectErrorMessage: error.message ?? null,
+            connectErrorName: error.name ?? null,
+            connectErrorDescription:
+              typeof error.description === "string"
+                ? error.description
+                : error.description
+                  ? JSON.stringify(error.description)
+                  : null,
+            connectErrorContext:
+              typeof error.context === "string"
+                ? error.context
+                : error.context
+                  ? JSON.stringify(error.context)
+                  : error.data
+                    ? JSON.stringify(error.data)
+                    : null,
+          }),
+        );
         finish(false);
       };
 
       timeoutId = window.setTimeout(() => {
+        publishSocketDebug(buildSocketDebugInfo("general", "connect-timeout", { timedOut: true }));
         finish(false);
       }, 2000);
 
@@ -233,6 +333,13 @@ function App() {
     const connected = await ensureSocketConnection();
     if (!connected) {
       console.log("[socket] createRoom connection failed", nextRoomCode);
+      publishSocketDebug(
+        buildSocketDebugInfo("createRoom", "failed-before-emit", {
+          failedBeforeEmit: true,
+          timedOut: socketDebugInfo?.timedOut ?? false,
+          roomCode: nextRoomCode,
+        }),
+      );
       setSocketAvailable(false);
       resetRoomSession();
       setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
@@ -241,11 +348,18 @@ function App() {
       return;
     }
 
+    publishSocketDebug(buildSocketDebugInfo("createRoom", "emit-start", { roomCode: nextRoomCode }));
     socket.emit(
       "createRoom",
       { roomCode: nextRoomCode, nickname },
       (result: { ok: boolean; error?: string; room?: RoomStatePayload; playerNumber?: 1 | 2 }) => {
         console.log("[socket] createRoom result", result);
+        publishSocketDebug(
+          buildSocketDebugInfo("createRoom", "emit-callback", {
+            roomCode: nextRoomCode,
+            callbackPayload: result,
+          }),
+        );
         setRoomActionLoading(false);
 
         if (!result?.ok || !result.room || !result.playerNumber) {
@@ -281,6 +395,13 @@ function App() {
     const connected = await ensureSocketConnection();
     if (!connected) {
       console.log("[socket] joinRoom connection failed", trimmedRoomCode);
+      publishSocketDebug(
+        buildSocketDebugInfo("joinRoom", "failed-before-emit", {
+          failedBeforeEmit: true,
+          timedOut: socketDebugInfo?.timedOut ?? false,
+          roomCode: trimmedRoomCode,
+        }),
+      );
       setSocketAvailable(false);
       resetRoomSession();
       setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
@@ -289,11 +410,18 @@ function App() {
       return;
     }
 
+    publishSocketDebug(buildSocketDebugInfo("joinRoom", "emit-start", { roomCode: trimmedRoomCode }));
     socket.emit(
       "joinRoom",
       { roomCode: trimmedRoomCode, nickname },
       (result: { ok: boolean; error?: string; room?: RoomStatePayload; playerNumber?: 1 | 2 }) => {
         console.log("[socket] joinRoom result", result);
+        publishSocketDebug(
+          buildSocketDebugInfo("joinRoom", "emit-callback", {
+            roomCode: trimmedRoomCode,
+            callbackPayload: result,
+          }),
+        );
         setRoomActionLoading(false);
 
         if (!result?.ok || !result.room || !result.playerNumber) {
@@ -516,6 +644,7 @@ function App() {
             <HomePage
               setCurrentPage={setCurrentPage}
               onStartGame={handleCreateRoom}
+              socketDebugText={socketDebugText}
               roomActionLoading={roomActionLoading}
               roomError={roomError}
               nickname={nicknameInput}
@@ -536,6 +665,7 @@ function App() {
               roomCode={roomCode}
               startGame={setCurrentPage}
               onJoinRoom={handleJoinRoom}
+              socketDebugText={socketDebugText}
               roomActionLoading={roomActionLoading}
               roomError={roomError}
             />

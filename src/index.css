@@ -770,6 +770,24 @@ body::before {
   font-weight: 700;
 }
 
+.socket-debug-panel {
+  width: min(100%, 420px);
+  max-height: 220px;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border-radius: 16px;
+  background: rgba(18, 37, 70, 0.84);
+  color: #f1f7ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 10px 22px rgba(40, 88, 148, 0.14);
+}
+
 .join-room-actions {
   display: flex;
   gap: 14px;
