@@ -831,11 +831,11 @@ body::before {
   width: min(100%, 420px);
   display: grid;
   justify-items: center;
-  margin-top: 6px;
+  margin-top: 10px;
 }
 
 .join-room-actions .button {
-  width: 100%;
+  width: min(100%, 220px);
 }
 
 .weapon-mini-screen {
@@ -3171,8 +3171,8 @@ body::before {
 
   .ready-lineup {
     width: 100%;
-    grid-template-columns: minmax(0, 1fr) minmax(64px, 92px) minmax(0, 1fr);
-    gap: clamp(12px, 2.6vw, 28px);
+    grid-template-columns: minmax(0, 1fr) minmax(54px, 82px) minmax(0, 1fr);
+    gap: clamp(18px, 3.8vw, 42px);
     align-items: stretch;
   }
 
@@ -3185,10 +3185,12 @@ body::before {
 
   .ready-lineup > .ready-player:first-child {
     justify-self: start;
+    margin-left: clamp(2px, 1vw, 12px);
   }
 
   .ready-lineup > .ready-player:last-child {
     justify-self: end;
+    margin-right: clamp(2px, 1vw, 12px);
   }
 
   .ready-avatar {

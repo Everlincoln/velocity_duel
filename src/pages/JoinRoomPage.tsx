@@ -13,7 +13,7 @@ type Props = {
 };
 
 function JoinRoomPage({
-  roomCode,
+  roomCode: _roomCode,
   startGame,
   onJoinRoom,
   isDev = false,
@@ -21,7 +21,7 @@ function JoinRoomPage({
   roomActionLabel = null,
   socketDebugText = null,
 }: Props) {
-  const [joinCode, setJoinCode] = useState(roomCode);
+  const [joinCode, setJoinCode] = useState("");
 
   return (
     <main className="screen minimal-screen">
