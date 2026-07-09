@@ -160,21 +160,12 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
     };
   }, [motionPermission, roomCode, setCurrentPage, setReactionTimeMs, socket, useSocketFlow]);
 
-  const fallbackMessage =
-    motionPermission === "granted"
-      ? "Shake to fire. Press Space on desktop."
-      : motionPermission === "unavailable"
-        ? "Motion permission is unavailable here. Space still works on desktop."
-        : "Motion is not enabled here. Press Space on desktop.";
-
   return (
     <main className={`screen fire-phase-screen ${showShake ? "fire-phase-screen-shake" : ""} ${isFired ? "is-fired" : ""}`}>
       <section className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
-            <p className="layout-editor-kicker">Duel Phase</p>
             <h1 className="layout-editor-title">FIRE!</h1>
-            <p className="layout-editor-subtitle">First shot wins.</p>
           </div>
         </header>
 
@@ -190,8 +181,7 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
           <div className={`fire-phase-flash ${showFlash ? "is-visible" : ""}`} aria-hidden="true" />
 
           <div className="fire-phase-overlay">
-            <div className="fire-phase-instruction">Shake to Fire</div>
-            <div className="fire-phase-fallback">{fallbackMessage}</div>
+            <div className="fire-phase-instruction">SHAKE</div>
             {reactionMs ? <div className="fire-phase-reaction">Fired in {reactionMs} ms</div> : null}
           </div>
         </section>
