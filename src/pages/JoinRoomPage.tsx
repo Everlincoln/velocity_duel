@@ -19,7 +19,6 @@ function JoinRoomPage({
   isDev = false,
   roomActionLoading = false,
   roomActionLabel = null,
-  roomError = null,
   socketDebugText = null,
 }: Props) {
   const [joinCode, setJoinCode] = useState(roomCode);
@@ -28,9 +27,7 @@ function JoinRoomPage({
     <main className="screen minimal-screen">
       <section className="minimal-shell">
         <div className="minimal-card join-minimal-card">
-          <p className="kicker">Join Room</p>
-          <h1 className="center-title">JOIN DUEL</h1>
-          <p className="section-text join-room-text">Enter a room code and jump straight into the lobby.</p>
+          <h1 className="center-title">JOIN ROOM</h1>
 
           <label className="field join-room-field">
             <span className="field-label">Room Code</span>
@@ -45,10 +42,6 @@ function JoinRoomPage({
               placeholder="ABCD"
             />
           </label>
-
-          <p className={`waiting-text join-room-message ${roomError ? "join-room-message-error" : ""}`}>
-            {roomError ?? "Ask your friend for the room code."}
-          </p>
 
           {isDev && socketDebugText ? (
             <details className="socket-debug-details">

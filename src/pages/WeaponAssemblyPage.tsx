@@ -130,13 +130,6 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     return ["weaponFrame", "weaponMagazine", "weaponSlide"] as WeaponPartId[];
   }, [step]);
 
-  const instruction =
-    step === "magazine"
-      ? "Drag the magazine close to the grip and it will snap in automatically."
-      : step === "slide"
-        ? "Slide the top part close to its slot and it will lock into place."
-        : "READY TO FIRE";
-
   useEffect(() => {
     console.log("[WeaponAssembly] layout source", layoutResolution.source);
     console.log("[WeaponAssembly] layout version", targetLayout.layoutVersion);
@@ -499,11 +492,9 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       <section ref={shellRef} className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
-            <p className="layout-editor-kicker">Gameplay Assembly</p>
             <h1 className="layout-editor-title">
               {step === "complete" ? "READY TO FIRE" : step === "magazine" ? "INSERT MAGAZINE" : "SLIDE TOP"}
             </h1>
-            <p className="layout-editor-subtitle">{instruction}</p>
           </div>
 
           <div className="layout-editor-actions">

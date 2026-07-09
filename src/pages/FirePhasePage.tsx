@@ -165,7 +165,7 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
       <section className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
-            <h1 className="layout-editor-title">FIRE!</h1>
+            <h1 className="layout-editor-title">SHAKE TO FIRE</h1>
           </div>
         </header>
 
@@ -180,10 +180,11 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
 
           <div className={`fire-phase-flash ${showFlash ? "is-visible" : ""}`} aria-hidden="true" />
 
-          <div className="fire-phase-overlay">
-            <div className="fire-phase-instruction">SHAKE</div>
-            {reactionMs ? <div className="fire-phase-reaction">Fired in {reactionMs} ms</div> : null}
-          </div>
+          {reactionMs ? (
+            <div className="fire-phase-overlay">
+              <div className="fire-phase-reaction">Fired in {reactionMs} ms</div>
+            </div>
+          ) : null}
         </section>
       </section>
     </main>

@@ -3162,9 +3162,9 @@ body::before {
   }
 
   .ready-lineup {
-    width: min(100%, 980px);
-    grid-template-columns: minmax(0, 1fr) minmax(72px, 104px) minmax(0, 1fr);
-    gap: clamp(10px, 2vw, 22px);
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(64px, 92px) minmax(0, 1fr);
+    gap: clamp(12px, 2.6vw, 28px);
     align-items: stretch;
   }
 
@@ -3175,8 +3175,16 @@ body::before {
     justify-items: center;
   }
 
+  .ready-lineup > .ready-player:first-child {
+    justify-self: start;
+  }
+
+  .ready-lineup > .ready-player:last-child {
+    justify-self: end;
+  }
+
   .ready-avatar {
-    width: min(34vh, 200px);
+    width: min(33vh, 192px);
     padding: 5px;
     box-shadow:
       inset 0 0 0 5px rgba(255, 255, 255, 0.54),
@@ -3208,7 +3216,7 @@ body::before {
     border-width: 2px;
     gap: 6px;
     box-shadow: 0 4px 12px rgba(96, 202, 127, 0.08);
-    width: min(100%, 184px);
+    width: min(100%, 176px);
     max-width: 100%;
   }
 
