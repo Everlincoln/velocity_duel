@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import HomePage from "./pages/HomePage";
 import CreateRoomPage from "./pages/CreateRoomPage";
@@ -11,6 +11,7 @@ import FirePhasePage from "./pages/FirePhasePage";
 import ResultPage from "./pages/ResultPage";
 import WeaponLayoutEditor from "./pages/WeaponLayoutEditor";
 import { getSocket } from "./lib/socket";
+import { WEAPON_PARTS } from "./components/weaponCanvasConfig";
 
 export type Page =
   | "home"
@@ -49,6 +50,9 @@ type RoomStatePayload = {
   roomCode: string;
   players: RoomPlayer[];
 };
+
+const SOCKET_CONNECT_TIMEOUT_MS = 8000;
+const WEAPON_ASSET_URLS = WEAPON_PARTS.map((part) => part.src);
 
 type SocketDebugInfo = {
   timestamp: string;
@@ -144,15 +148,18 @@ function App() {
   const [roomCode, setRoomCode] = useState(generateRoomCode());
   const [reactionTimeMs, setReactionTimeMs] = useState<number | null>(null);
   const [motionPermission, setMotionPermission] = useState<MotionPermissionState>("unknown");
-  const [pendingGameplayPage, setPendingGameplayPage] = useState<Page>("ready");
-  const [motionReturnPage, setMotionReturnPage] = useState<Page>("home");
+  const [pendingGameplayPage] = useState<Page>("ready");
+  const [motionReturnPage] = useState<Page>("home");
   const [roomPlayers, setRoomPlayers] = useState<RoomPlayer[]>([]);
   const [currentPlayerNumber, setCurrentPlayerNumber] = useState<1 | 2 | null>(null);
   const [duelResult, setDuelResult] = useState<DuelResult | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [roomActionLoading, setRoomActionLoading] = useState(false);
+  const [roomActionLabel, setRoomActionLabel] = useState<string | null>(null);
   const [socketAvailable, setSocketAvailable] = useState(false);
   const [socketDebugInfo, setSocketDebugInfo] = useState<SocketDebugInfo | null>(null);
+  const [weaponAssetsReady, setWeaponAssetsReady] = useState(false);
+  const [gameplayAssetsLoading, setGameplayAssetsLoading] = useState(false);
   const [nicknameInput, setNicknameInput] = useState("");
   const [sessionNickname, setSessionNickname] = useState("");
   const [fallbackOpponentNickname] = useState(() => generateFunNickname());
@@ -161,6 +168,7 @@ function App() {
     height: typeof window === "undefined" ? 720 : window.innerHeight,
   }));
   const socket = useMemo(() => getSocket(), []);
+  const weaponAssetsPromiseRef = useRef<Promise<void> | null>(null);
   const isDev = import.meta.env.DEV;
   const isPortrait = viewport.height > viewport.width;
   const isMobileSized = Math.min(viewport.width, viewport.height) < 900;
@@ -211,16 +219,34 @@ function App() {
 
   const socketDebugText = socketDebugInfo ? JSON.stringify(socketDebugInfo, null, 2) : null;
 
-  const goToGameplayStart = (nextPage: Page) => {
-    if (motionPermission === "granted") {
-      setCurrentPage(nextPage);
+  const ensureWeaponAssetsReady = async () => {
+    if (weaponAssetsReady) {
       return;
     }
 
-    setPendingGameplayPage(nextPage);
-    setMotionReturnPage(currentPage);
-    setCurrentPage("motion-setup");
+    if (!weaponAssetsPromiseRef.current) {
+      weaponAssetsPromiseRef.current = Promise.all(
+        WEAPON_ASSET_URLS.map(
+          (src) =>
+            new Promise<void>((resolve) => {
+              const image = new Image();
+              image.decoding = "async";
+              image.onload = () => resolve();
+              image.onerror = () => resolve();
+              image.src = src;
+            }),
+        ),
+      ).then(() => {
+        setWeaponAssetsReady(true);
+      });
+    }
+
+    await weaponAssetsPromiseRef.current;
   };
+
+  useEffect(() => {
+    void ensureWeaponAssetsReady();
+  }, []);
 
   const resetRoomSession = () => {
     setRoomPlayers([]);
@@ -229,6 +255,7 @@ function App() {
     setReactionTimeMs(null);
     setRoomError(null);
     setRoomActionLoading(false);
+    setRoomActionLabel(null);
   };
 
   const resolveSessionNickname = () => {
@@ -254,10 +281,10 @@ function App() {
     if (socket.connected) {
       setSocketAvailable(true);
       publishSocketDebug(buildSocketDebugInfo("general", "connect-success"));
-      return true;
+      return { connected: true, timedOut: false };
     }
 
-    return await new Promise<boolean>((resolve) => {
+    return await new Promise<{ connected: boolean; timedOut: boolean }>((resolve) => {
       let settled = false;
       let timeoutId = 0;
 
@@ -274,11 +301,11 @@ function App() {
         settled = true;
         cleanup();
         setSocketAvailable(value);
-        resolve(value);
+        resolve({ connected: value, timedOut: false });
       };
 
       const handleConnect = () => {
-        console.log("[socket] connected", socket.id);
+        console.log("[SocketDebug] connect event received", { socketId: socket.id });
         publishSocketDebug(buildSocketDebugInfo("general", "connect-success"));
         finish(true);
       };
@@ -310,13 +337,24 @@ function App() {
 
       timeoutId = window.setTimeout(() => {
         publishSocketDebug(buildSocketDebugInfo("general", "connect-timeout", { timedOut: true }));
-        finish(false);
-      }, 2000);
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        setSocketAvailable(false);
+        resolve({ connected: false, timedOut: true });
+      }, SOCKET_CONNECT_TIMEOUT_MS);
 
       socket.off("connect", handleConnect);
       socket.off("connect_error", handleError);
       socket.on("connect", handleConnect);
       socket.on("connect_error", handleError);
+      console.log("[SocketDebug] connect() called", {
+        socketServerUrl: import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3001",
+        timeoutMs: SOCKET_CONNECT_TIMEOUT_MS,
+        transportConfigured: Array.isArray(socket.io.opts.transports) ? socket.io.opts.transports : [],
+      });
       socket.connect();
     });
   };
@@ -329,14 +367,15 @@ function App() {
     setReactionTimeMs(null);
     setRoomError(null);
     setRoomActionLoading(true);
+    setRoomActionLabel("Connecting...");
 
-    const connected = await ensureSocketConnection();
-    if (!connected) {
+    const connectionResult = await ensureSocketConnection();
+    if (!connectionResult.connected) {
       console.log("[socket] createRoom connection failed", nextRoomCode);
       publishSocketDebug(
         buildSocketDebugInfo("createRoom", "failed-before-emit", {
           failedBeforeEmit: true,
-          timedOut: socketDebugInfo?.timedOut ?? false,
+          timedOut: connectionResult.timedOut,
           roomCode: nextRoomCode,
         }),
       );
@@ -344,11 +383,14 @@ function App() {
       resetRoomSession();
       setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
       setRoomActionLoading(false);
+      setRoomActionLabel(null);
       setCurrentPage("home");
       return;
     }
 
+    setRoomActionLabel("Connecting...");
     publishSocketDebug(buildSocketDebugInfo("createRoom", "emit-start", { roomCode: nextRoomCode }));
+    console.log("[SocketDebug] createRoom emit sent", { roomCode: nextRoomCode, socketId: socket.id });
     socket.emit(
       "createRoom",
       { roomCode: nextRoomCode, nickname },
@@ -361,6 +403,7 @@ function App() {
           }),
         );
         setRoomActionLoading(false);
+        setRoomActionLabel(null);
 
         if (!result?.ok || !result.room || !result.playerNumber) {
           setRoomError(result?.error || "Unable to create room.");
@@ -385,20 +428,22 @@ function App() {
     if (validationError) {
       setRoomError(validationError);
       setRoomActionLoading(false);
+      setRoomActionLabel(null);
       return;
     }
 
     setRoomError(null);
     setRoomActionLoading(true);
+    setRoomActionLabel("Connecting...");
     setRoomCode(trimmedRoomCode);
 
-    const connected = await ensureSocketConnection();
-    if (!connected) {
+    const connectionResult = await ensureSocketConnection();
+    if (!connectionResult.connected) {
       console.log("[socket] joinRoom connection failed", trimmedRoomCode);
       publishSocketDebug(
         buildSocketDebugInfo("joinRoom", "failed-before-emit", {
           failedBeforeEmit: true,
-          timedOut: socketDebugInfo?.timedOut ?? false,
+          timedOut: connectionResult.timedOut,
           roomCode: trimmedRoomCode,
         }),
       );
@@ -406,11 +451,14 @@ function App() {
       resetRoomSession();
       setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
       setRoomActionLoading(false);
+      setRoomActionLabel(null);
       setCurrentPage("join");
       return;
     }
 
+    setRoomActionLabel("Connecting...");
     publishSocketDebug(buildSocketDebugInfo("joinRoom", "emit-start", { roomCode: trimmedRoomCode }));
+    console.log("[SocketDebug] joinRoom emit sent", { roomCode: trimmedRoomCode, socketId: socket.id });
     socket.emit(
       "joinRoom",
       { roomCode: trimmedRoomCode, nickname },
@@ -423,6 +471,7 @@ function App() {
           }),
         );
         setRoomActionLoading(false);
+        setRoomActionLabel(null);
 
         if (!result?.ok || !result.room || !result.playerNumber) {
           const normalizedError =
@@ -475,7 +524,7 @@ function App() {
     setCurrentPage("home");
   };
 
-  const handlePlayAgain = () => {
+  const handlePlayAgain = async () => {
     setDuelResult(null);
     setReactionTimeMs(null);
 
@@ -494,6 +543,12 @@ function App() {
       return;
     }
 
+    setGameplayAssetsLoading(true);
+    try {
+      await ensureWeaponAssetsReady();
+    } finally {
+      setGameplayAssetsLoading(false);
+    }
     setCurrentPage("assembly");
   };
 
@@ -560,7 +615,11 @@ function App() {
       setRoomPlayers(room.players);
       setDuelResult(null);
       setReactionTimeMs(null);
-      setCurrentPage("assembly");
+      setGameplayAssetsLoading(true);
+      void ensureWeaponAssetsReady().finally(() => {
+        setGameplayAssetsLoading(false);
+        setCurrentPage("assembly");
+      });
     };
 
     const handleGameResult = (payload: {
@@ -606,7 +665,7 @@ function App() {
       socket.off("bothPlayersReady", handleBothPlayersReady);
       socket.off("gameResult", handleGameResult);
     };
-  }, [currentPlayerNumber, goToGameplayStart, socket]);
+  }, [currentPlayerNumber, socket]);
 
   useEffect(() => {
     if (currentPage === "create" && !socketAvailable && roomPlayers.length === 0 && !currentPlayerNumber) {
@@ -644,8 +703,10 @@ function App() {
             <HomePage
               setCurrentPage={setCurrentPage}
               onStartGame={handleCreateRoom}
+              isDev={isDev}
               socketDebugText={socketDebugText}
               roomActionLoading={roomActionLoading}
+              roomActionLabel={roomActionLabel}
               roomError={roomError}
               nickname={nicknameInput}
               onNicknameChange={setNicknameInput}
@@ -665,8 +726,10 @@ function App() {
               roomCode={roomCode}
               startGame={setCurrentPage}
               onJoinRoom={handleJoinRoom}
+              isDev={isDev}
               socketDebugText={socketDebugText}
               roomActionLoading={roomActionLoading}
+              roomActionLabel={roomActionLabel}
               roomError={roomError}
             />
           )}
@@ -692,6 +755,7 @@ function App() {
               setMotionPermission={setMotionPermission}
               fallbackCurrentNickname={sessionNickname || normalizeNicknameInput(nicknameInput) || "Rocket Duck"}
               fallbackOpponentNickname={fallbackOpponentNickname}
+              isPreparingMatch={gameplayAssetsLoading}
             />
           )}
           {currentPage === "assembly" && (

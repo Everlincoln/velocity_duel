@@ -162,21 +162,19 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
 
   const fallbackMessage =
     motionPermission === "granted"
-      ? "Shake your phone, or press Space on desktop."
+      ? "Shake to fire. Press Space on desktop."
       : motionPermission === "unavailable"
-        ? "No native permission API detected here. Motion values are still being observed if the browser provides them."
-        : "Motion is not enabled here. Press Space to test firing on desktop.";
+        ? "Motion permission is unavailable here. Space still works on desktop."
+        : "Motion is not enabled here. Press Space on desktop.";
 
   return (
     <main className={`screen fire-phase-screen ${showShake ? "fire-phase-screen-shake" : ""} ${isFired ? "is-fired" : ""}`}>
       <section className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>
-            <p className="layout-editor-kicker">Single Player Fire Test</p>
-            <h1 className="layout-editor-title">SHAKE TO FIRE</h1>
-            <p className="layout-editor-subtitle">
-              Shake your phone to blast, or press Space on desktop for this testing build.
-            </p>
+            <p className="layout-editor-kicker">Duel Phase</p>
+            <h1 className="layout-editor-title">FIRE!</h1>
+            <p className="layout-editor-subtitle">First shot wins.</p>
           </div>
         </header>
 

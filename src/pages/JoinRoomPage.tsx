@@ -5,7 +5,9 @@ type Props = {
   roomCode: string;
   startGame: (page: Page) => void;
   onJoinRoom?: (roomCode: string) => void;
+  isDev?: boolean;
   roomActionLoading?: boolean;
+  roomActionLabel?: string | null;
   roomError?: string | null;
   socketDebugText?: string | null;
 };
@@ -14,7 +16,9 @@ function JoinRoomPage({
   roomCode,
   startGame,
   onJoinRoom,
+  isDev = false,
   roomActionLoading = false,
+  roomActionLabel = null,
   roomError = null,
   socketDebugText = null,
 }: Props) {
@@ -46,7 +50,12 @@ function JoinRoomPage({
             {roomError ?? "Ask your friend for the room code."}
           </p>
 
-          {socketDebugText ? <pre className="socket-debug-panel">{socketDebugText}</pre> : null}
+          {isDev && socketDebugText ? (
+            <details className="socket-debug-details">
+              <summary className="socket-debug-summary">Debug Info</summary>
+              <pre className="socket-debug-panel">{socketDebugText}</pre>
+            </details>
+          ) : null}
 
           <div className="join-room-actions">
             <button
@@ -54,7 +63,7 @@ function JoinRoomPage({
               onClick={() => (onJoinRoom ? onJoinRoom(joinCode) : startGame("ready"))}
               disabled={roomActionLoading}
             >
-              {roomActionLoading ? "JOINING..." : "PLAY"}
+              {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "PLAY"}
             </button>
           </div>
         </div>

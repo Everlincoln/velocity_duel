@@ -4,7 +4,9 @@ import mainCharacter from "../assets/characters/hero.png";
 type Props = {
   setCurrentPage: (page: Page) => void;
   onStartGame?: () => void;
+  isDev?: boolean;
   roomActionLoading?: boolean;
+  roomActionLabel?: string | null;
   roomError?: string | null;
   socketDebugText?: string | null;
   nickname: string;
@@ -14,7 +16,9 @@ type Props = {
 function HomePage({
   setCurrentPage,
   onStartGame,
+  isDev = false,
   roomActionLoading = false,
+  roomActionLabel = null,
   roomError = null,
   socketDebugText = null,
   nickname,
@@ -53,19 +57,23 @@ function HomePage({
                 onClick={() => (onStartGame ? onStartGame() : setCurrentPage("create"))}
                 disabled={roomActionLoading}
               >
-                {roomActionLoading ? "STARTING..." : "PLAY"}
+                {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "PLAY"}
               </button>
               <button
                 className="button button-big button-blue button-home-outline"
                 onClick={() => setCurrentPage("join")}
+                disabled={roomActionLoading}
               >
                 JOIN ROOM
               </button>
             </div>
 
             {roomError ? <p className="section-text join-room-message-error">{roomError}</p> : null}
-            {socketDebugText ? (
-              <pre className="socket-debug-panel">{socketDebugText}</pre>
+            {isDev && socketDebugText ? (
+              <details className="socket-debug-details">
+                <summary className="socket-debug-summary">Debug Info</summary>
+                <pre className="socket-debug-panel">{socketDebugText}</pre>
+              </details>
             ) : null}
           </div>
         </div>

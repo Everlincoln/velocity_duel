@@ -15,6 +15,7 @@ type Props = {
   setMotionPermission: (value: MotionPermissionState) => void;
   fallbackCurrentNickname?: string;
   fallbackOpponentNickname?: string;
+  isPreparingMatch?: boolean;
 };
 
 type IOSDeviceMotionEvent = typeof DeviceMotionEvent & {
@@ -47,6 +48,7 @@ function ReadyRoomPage({
   setMotionPermission,
   fallbackCurrentNickname = "Rocket Duck",
   fallbackOpponentNickname = "Chaos Banana",
+  isPreparingMatch = false,
 }: Props) {
   const [player1Ready, setPlayer1Ready] = useState(false);
   const [player2Ready, setPlayer2Ready] = useState(false);
@@ -334,6 +336,7 @@ function ReadyRoomPage({
           </div>
 
           {permissionMessage ? <p className="section-text ready-permission-message">{permissionMessage}</p> : null}
+          {isPreparingMatch ? <p className="section-text ready-permission-message">Loading the duel gear...</p> : null}
 
           <div className="ready-controls">
             <button className="ready-control-button" onClick={() => (onLeaveRoom ? onLeaveRoom() : setCurrentPage("home"))}>

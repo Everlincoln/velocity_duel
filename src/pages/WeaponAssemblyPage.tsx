@@ -92,7 +92,7 @@ function buildGameplayLayout(
 }
 
 function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
-  const [debugMode, setDebugMode] = useState(true);
+  const debugMode = false;
   const [layoutResolution] = useState(() => resolveWeaponLayout());
   const [targetLayout] = useState(() => layoutResolution.layout);
   const [step, setStep] = useState<AssemblyStep>("magazine");
@@ -138,6 +138,10 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
         : "READY TO FIRE";
 
   useEffect(() => {
+    if (!import.meta.env.DEV || !debugMode) {
+      return;
+    }
+
     console.log("[WeaponAssembly] layout source", layoutResolution.source);
     console.log("[WeaponAssembly] layout version", targetLayout.layoutVersion);
     console.log("[WeaponAssembly] loaded layout JSON", JSON.stringify(targetLayout, null, 2));
@@ -148,6 +152,10 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   }, [layoutResolution.source, targetLayout]);
 
   useEffect(() => {
+    if (!import.meta.env.DEV || !debugMode) {
+      return;
+    }
+
     const updateDebugInfo = () => {
       const screenElement = screenRef.current;
       const shellElement = shellRef.current;
@@ -284,7 +292,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       window.removeEventListener("resize", updateDebugInfo);
       window.removeEventListener("orientationchange", updateDebugInfo);
     };
-  }, [layout, layoutResolution.source, step, targetLayout, visiblePartIds]);
+  }, [debugMode, layout, layoutResolution.source, step, targetLayout, visiblePartIds]);
 
   useEffect(() => {
     if (step !== "complete") {
@@ -294,7 +302,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     setReactionTimeMs(null);
     const timeout = window.setTimeout(() => {
       setCurrentPage("fire");
-    }, 1400);
+    }, 450);
 
     return () => window.clearTimeout(timeout);
   }, [setCurrentPage, setReactionTimeMs, step]);
@@ -319,14 +327,16 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     }
 
     const rect = stage.getBoundingClientRect();
-    console.log("[WeaponAssembly] canvas scale", {
-      rectWidth: rect.width,
-      rectHeight: rect.height,
-      canvasWidth: WEAPON_CANVAS_WIDTH,
-      canvasHeight: WEAPON_CANVAS_HEIGHT,
-      scaleX: rect.width / WEAPON_CANVAS_WIDTH,
-      scaleY: rect.height / WEAPON_CANVAS_HEIGHT,
-    });
+    if (import.meta.env.DEV && debugMode) {
+      console.log("[WeaponAssembly] canvas scale", {
+        rectWidth: rect.width,
+        rectHeight: rect.height,
+        canvasWidth: WEAPON_CANVAS_WIDTH,
+        canvasHeight: WEAPON_CANVAS_HEIGHT,
+        scaleX: rect.width / WEAPON_CANVAS_WIDTH,
+        scaleY: rect.height / WEAPON_CANVAS_HEIGHT,
+      });
+    }
     return {
       x: ((event.clientX - rect.left) / rect.width) * WEAPON_CANVAS_WIDTH,
       y: ((event.clientY - rect.top) / rect.height) * WEAPON_CANVAS_HEIGHT,
@@ -373,17 +383,19 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     const threshold = partId === "weaponMagazine" ? MAGAZINE_SNAP_DISTANCE : SLIDE_SNAP_DISTANCE;
     const didSnap = distance <= threshold;
 
-    console.log("[WeaponAssembly] snap check", {
-      layoutSource: layoutResolution.source,
-      layoutVersion: targetLayout.layoutVersion,
-      partId,
-      draggedLogicalX: Number(x.toFixed(2)),
-      draggedLogicalY: Number(y.toFixed(2)),
-      targetLogicalX: target.x,
-      targetLogicalY: target.y,
-      distance: Number(distance.toFixed(2)),
-      didSnap,
-    });
+    if (import.meta.env.DEV && debugMode) {
+      console.log("[WeaponAssembly] snap check", {
+        layoutSource: layoutResolution.source,
+        layoutVersion: targetLayout.layoutVersion,
+        partId,
+        draggedLogicalX: Number(x.toFixed(2)),
+        draggedLogicalY: Number(y.toFixed(2)),
+        targetLogicalX: target.x,
+        targetLogicalY: target.y,
+        distance: Number(distance.toFixed(2)),
+        didSnap,
+      });
+    }
 
     if (didSnap) {
       completeStep(partId);
@@ -507,10 +519,6 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
           </div>
 
           <div className="layout-editor-actions">
-            <label className="layout-editor-toggle" style={{ display: "none" }}>
-              <input type="checkbox" checked={debugMode} onChange={(event) => setDebugMode(event.target.checked)} />
-              <span>Debug overlay</span>
-            </label>
             <button className="button button-cream" onClick={() => setCurrentPage("home")}>
               Back
             </button>
