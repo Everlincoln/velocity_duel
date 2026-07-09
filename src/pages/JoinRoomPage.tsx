@@ -29,8 +29,7 @@ function JoinRoomPage({
         <div className="minimal-card join-minimal-card">
           <h1 className="center-title">JOIN ROOM</h1>
 
-          <label className="field join-room-field">
-            <span className="field-label">Room Code</span>
+          <label className="join-room-field">
             <input
               className="input playful-input join-room-input"
               value={joinCode}
@@ -39,7 +38,7 @@ function JoinRoomPage({
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
-              placeholder="ABCD"
+              placeholder="ROOM CODE"
             />
           </label>
 
@@ -56,7 +55,7 @@ function JoinRoomPage({
               onClick={() => (onJoinRoom ? onJoinRoom(joinCode) : startGame("ready"))}
               disabled={roomActionLoading}
             >
-              {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "PLAY"}
+              {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "JOIN"}
             </button>
           </div>
         </div>

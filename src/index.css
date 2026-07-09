@@ -753,18 +753,22 @@ body::before {
 
 .join-minimal-card {
   width: min(100%, 560px);
-  gap: 20px;
-}
-
-.join-room-text {
-  max-width: 460px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+  gap: 28px;
 }
 
 .join-room-field {
   width: min(100%, 420px);
+  margin: 0;
+  display: grid;
+  justify-items: center;
 }
 
 .join-room-input {
+  width: 100%;
   text-align: center;
   letter-spacing: 0.18em;
 }
@@ -824,10 +828,14 @@ body::before {
 }
 
 .join-room-actions {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  justify-content: center;
+  width: min(100%, 420px);
+  display: grid;
+  justify-items: center;
+  margin-top: 6px;
+}
+
+.join-room-actions .button {
+  width: 100%;
 }
 
 .weapon-mini-screen {
