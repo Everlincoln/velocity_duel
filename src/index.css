@@ -3447,13 +3447,13 @@ body::before {
 
   .ready-lineup > .ready-player:first-child {
     justify-self: start !important;
-    transform: translateX(-18px);
+    transform: translateX(-30px);
     margin: 0 !important;
   }
 
   .ready-lineup > .ready-player:last-child {
     justify-self: end !important;
-    transform: translateX(18px);
+    transform: translateX(30px);
     margin: 0 !important;
   }
 }
