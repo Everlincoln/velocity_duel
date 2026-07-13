@@ -646,6 +646,11 @@ body::before {
   text-transform: uppercase;
   cursor: default;
   pointer-events: none;
+  color: #5f7c98;
+}
+
+.ready-checkmark {
+  color: #2cae58;
 }
 
 .ready-permission-message {
