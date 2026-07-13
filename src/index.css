@@ -555,6 +555,10 @@ body::before {
 
 }
 
+.ready-avatar-blue .ready-avatar-image {
+  transform: translateX(-8px) translateY(4px) scale(1.2) !important;
+}
+
 .ready-label {
   display: inline-flex;
   align-items: center;
@@ -3241,6 +3245,10 @@ body::before {
     justify-self: center;
     width: 120% !important;
     transform: translateX(0) translateY(10px) scale(1.2) !important;
+  }
+
+  .ready-avatar-blue .ready-avatar-image {
+    transform: translateX(-8px) translateY(10px) scale(1.2) !important;
   }
 
   .ready-label {
