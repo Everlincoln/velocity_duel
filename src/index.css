@@ -74,6 +74,15 @@ body::before {
 .screen-home {
   display: grid;
   align-items: center;
+  width: 100vw;
+  min-height: 100dvh;
+  height: 100dvh;
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  overflow: hidden;
 }
 
 .screen-home-simple {
@@ -185,6 +194,8 @@ body::before {
 .home-simple-shell {
   display: grid;
   place-items: center;
+  width: 100%;
+  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
 .home-simple-layout {
@@ -2636,6 +2647,14 @@ body::before {
     overflow: visible;
   }
 
+  .screen-home {
+    padding:
+      env(safe-area-inset-top)
+      env(safe-area-inset-right)
+      env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+
   .home-simple-layout,
   .layout-two,
   .preview-strip,
@@ -2980,12 +2999,17 @@ body::before {
 @media (orientation: landscape) and (pointer: coarse) and (max-height: 560px) {
   .screen-home {
     min-height: 100dvh;
-    padding: 12px 16px;
+    height: 100dvh;
+    padding:
+      env(safe-area-inset-top)
+      env(safe-area-inset-right)
+      env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
     overflow: hidden;
   }
 
   .home-simple-shell {
-    min-height: calc(100dvh - 24px);
+    min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 
   .home-simple-layout {
