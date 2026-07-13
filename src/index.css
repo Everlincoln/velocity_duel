@@ -195,6 +195,8 @@ body::before {
   display: grid;
   place-items: center;
   width: 100%;
+  max-width: none;
+  margin: 0;
   min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
