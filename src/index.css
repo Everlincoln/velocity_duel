@@ -556,7 +556,7 @@ body::before {
 }
 
 .ready-avatar-image-player2 {
-  transform: translateX(-8px) translateY(4px) scale(1.2) !important;
+  transform: translateX(-6px) translateY(4px) scale(1.2) !important;
 }
 
 .ready-label {
@@ -3262,7 +3262,7 @@ body::before {
   }
 
   .ready-avatar-image-player2 {
-    transform: translateX(-8px) translateY(10px) scale(1.2) !important;
+    transform: translateX(-6px) translateY(10px) scale(1.2) !important;
   }
 
   .ready-label {
