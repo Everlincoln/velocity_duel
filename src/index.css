@@ -555,7 +555,7 @@ body::before {
 
 }
 
-.ready-avatar-blue .ready-avatar-image {
+.ready-avatar-image-player2 {
   transform: translateX(-8px) translateY(4px) scale(1.2) !important;
 }
 
@@ -3261,7 +3261,7 @@ body::before {
     transform: translateX(0) translateY(10px) scale(1.2) !important;
   }
 
-  .ready-avatar-blue .ready-avatar-image {
+  .ready-avatar-image-player2 {
     transform: translateX(-8px) translateY(10px) scale(1.2) !important;
   }
 

@@ -324,7 +324,7 @@ function ReadyRoomPage({
 
             <div className="ready-player">
               <div className="ready-avatar ready-avatar-pink">
-                <img src={player2} alt="Player 2 avatar" className="ready-avatar-image" />
+                <img src={player2} alt="Player 2 avatar" className="ready-avatar-image ready-avatar-image-player2" />
               </div>
               <div className="ready-label ready-label-red">
                 {player2Name}
