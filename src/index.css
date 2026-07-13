@@ -538,7 +538,7 @@ body::before {
 .ready-avatar-image {
   position: relative;
   z-index: 1;
-  width: 88%;
+  width: 110%;
   height: auto;
   display: block;
   object-fit: contain;
