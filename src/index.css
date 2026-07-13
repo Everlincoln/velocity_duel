@@ -3433,3 +3433,19 @@ body::before {
     font-size: clamp(4rem, 20vw, 6.5rem);
   }
 }
+
+@media (orientation: landscape) and (pointer: coarse) and (max-height: 560px) {
+
+  .ready-lineup > .ready-player:first-child,
+
+  .ready-lineup > .ready-player:last-child {
+
+    justify-self: center !important;
+
+    margin-left: 0 !important;
+
+    margin-right: 0 !important;
+
+  }
+
+}
