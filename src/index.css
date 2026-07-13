@@ -642,17 +642,10 @@ body::before {
 }
 
 .ready-opponent-status {
-  color: rgba(36, 69, 125, 0.78);
-  font-size: clamp(1.1rem, 1.7vw, 1.45rem);
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  line-height: 1.1;
   text-align: center;
   text-transform: uppercase;
-}
-
-.ready-opponent-status-ready {
-  color: #2cae58;
+  cursor: default;
+  pointer-events: none;
 }
 
 .ready-permission-message {
@@ -660,11 +653,6 @@ body::before {
   color: #194777;
   font-weight: 700;
   text-align: center;
-}
-
-.ready-check {
-  font-size: 1.2em;
-  line-height: 1;
 }
 
 .ready-count-zone {
@@ -3290,22 +3278,10 @@ body::before {
     max-width: 100%;
   }
 
-  .ready-opponent-status {
-    font-size: clamp(0.82rem, 1.7vw, 0.98rem);
-  }
-
   .ready-badge-off {
     background: rgba(255, 255, 255, 0.7);
     border-color: rgba(174, 198, 226, 0.9);
     color: #56748e;
-  }
-
-  .ready-badge-off .ready-check {
-    display: none;
-  }
-
-  .ready-status-passive.ready-badge-off .ready-check {
-    display: none;
   }
 
   .ready-count-zone {

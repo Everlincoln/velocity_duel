@@ -230,14 +230,14 @@ function ReadyRoomPage({
 
   const getOtherPlayerStatus = (isPresent: boolean, isReady: boolean) => {
     if (!isPresent) {
-      return "WAITING...";
+      return "WAITING FOR OPPONENT";
     }
 
     if (isReady) {
-      return "READY";
+      return "OPPONENT READY";
     }
 
-    return "NOT READY";
+    return "OPPONENT NOT READY";
   };
 
   const renderPlayerAction = (
@@ -248,7 +248,7 @@ function ReadyRoomPage({
   ) => {
     if (!isCurrentPlayer) {
       return (
-        <div className={`ready-opponent-status ${isReady ? "ready-opponent-status-ready" : ""}`}>
+        <div className={`ready-status ready-status-passive ready-opponent-status ${isReady ? "ready-badge-on" : "ready-badge-off"}`}>
           <span>{getOtherPlayerStatus(isPresent, isReady)}</span>
         </div>
       );
@@ -257,7 +257,6 @@ function ReadyRoomPage({
     if (isReady) {
       return (
         <div className="ready-status ready-status-active ready-badge ready-badge-on">
-          <span className="ready-check">✓</span>
           <span>READY</span>
         </div>
       );
@@ -265,7 +264,6 @@ function ReadyRoomPage({
 
     return (
       <button type="button" className="ready-badge ready-badge-off" onClick={onToggle}>
-        <span className="ready-check">{motionPermission === "requesting" ? "…" : "○"}</span>
         <span>{getActionLabel(isCurrentPlayer, isReady)}</span>
       </button>
     );
