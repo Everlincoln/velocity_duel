@@ -3239,7 +3239,7 @@ body::before {
 
   .ready-lineup > .ready-player:first-child {
     justify-self: start;
-    transform: translateX(1px);
+    transform: translateX(2px);
     margin-left: -40px;;
   }
 
