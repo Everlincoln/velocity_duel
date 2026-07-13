@@ -248,8 +248,7 @@ function ReadyRoomPage({
   ) => {
     if (!isCurrentPlayer) {
       return (
-        <div className={`ready-status ready-status-passive ${isReady ? "ready-badge-on" : "ready-badge-off"}`}>
-          <span className="ready-check">{isReady ? "✓" : isPresent ? "○" : "…"}</span>
+        <div className={`ready-opponent-status ${isReady ? "ready-opponent-status-ready" : ""}`}>
           <span>{getOtherPlayerStatus(isPresent, isReady)}</span>
         </div>
       );
