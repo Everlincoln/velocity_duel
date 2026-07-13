@@ -536,13 +536,23 @@ body::before {
 }
 
 .ready-avatar-image {
+
   position: relative;
+
   z-index: 1;
-  width: 110%;
+
+  width: 140% !important;
+
   height: auto;
+
   display: block;
+
   object-fit: contain;
-  transform: translateY(4px);
+
+  transform: translateY(4px) scale(1.2) !important;
+
+  outline: 4px solid red;
+
 }
 
 .ready-label {
