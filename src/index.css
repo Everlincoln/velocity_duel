@@ -511,6 +511,7 @@ body::before {
   display: grid;
   justify-items: center;
   gap: 16px;
+  width: 100%;
 }
 
 .ready-avatar {
@@ -589,9 +590,11 @@ body::before {
   gap: 12px;
   min-height: 68px;
   min-width: min(24vw, 260px);
+  width: clamp(220px, 24vw, 260px);
   padding: 0 28px;
   border: 4px solid transparent;
   border-radius: 999px;
+  box-sizing: border-box;
   font-size: clamp(1.3rem, 2vw, 2rem);
   font-weight: 900;
   box-shadow: 0 8px 20px rgba(96, 202, 127, 0.12);
@@ -627,8 +630,10 @@ body::before {
   gap: 12px;
   min-height: 68px;
   min-width: min(24vw, 260px);
+  width: clamp(220px, 24vw, 260px);
   padding: 0 28px;
   border-radius: 999px;
+  box-sizing: border-box;
   font-size: clamp(1.3rem, 2vw, 2rem);
   font-weight: 900;
 }
