@@ -22,56 +22,6 @@ type IOSDeviceMotionEvent = typeof DeviceMotionEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
 };
 
-type MotionDebugSnapshot = {
-  result: MotionPermissionState | "not-called";
-  calledFromButtonTapHandler: boolean;
-  deviceMotionEventType: string;
-  deviceMotionRequestPermissionType: string;
-  deviceOrientationEventType: string;
-  deviceOrientationRequestPermissionType: string;
-  userAgent: string;
-  pageUrl: string;
-  pageProtocol: string;
-  isSecureContext: boolean | "unknown";
-  errorName: string | null;
-  errorMessage: string | null;
-};
-
-function createMotionDebugSnapshot(
-  details: Pick<MotionDebugSnapshot, "result" | "calledFromButtonTapHandler" | "errorName" | "errorMessage">,
-): MotionDebugSnapshot {
-  if (typeof window === "undefined") {
-    return {
-      ...details,
-      deviceMotionEventType: "undefined",
-      deviceMotionRequestPermissionType: "undefined",
-      deviceOrientationEventType: "undefined",
-      deviceOrientationRequestPermissionType: "undefined",
-      userAgent: "unknown",
-      pageUrl: "unknown",
-      pageProtocol: "unknown",
-      isSecureContext: "unknown",
-    };
-  }
-
-  const motionEvent = window.DeviceMotionEvent as IOSDeviceMotionEvent | undefined;
-  const orientationEvent = window.DeviceOrientationEvent as
-    | (typeof DeviceOrientationEvent & { requestPermission?: () => Promise<"granted" | "denied"> })
-    | undefined;
-
-  return {
-    ...details,
-    deviceMotionEventType: typeof window.DeviceMotionEvent,
-    deviceMotionRequestPermissionType: typeof motionEvent?.requestPermission,
-    deviceOrientationEventType: typeof window.DeviceOrientationEvent,
-    deviceOrientationRequestPermissionType: typeof orientationEvent?.requestPermission,
-    userAgent: window.navigator.userAgent,
-    pageUrl: window.location.href,
-    pageProtocol: window.location.protocol,
-    isSecureContext: window.isSecureContext,
-  };
-}
-
 async function requestMotionAccess() {
   if (typeof window === "undefined" || !("DeviceMotionEvent" in window)) {
     return "unavailable" as MotionPermissionState;
@@ -104,7 +54,6 @@ function ReadyRoomPage({
   const [player2Ready, setPlayer2Ready] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
-  const [motionDebug, setMotionDebug] = useState<MotionDebugSnapshot | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<"idle" | "copied" | "failed">("idle");
   const isTouchDevice =
     typeof window !== "undefined" &&
@@ -155,25 +104,8 @@ function ReadyRoomPage({
     }
 
     try {
-      const beforeRequestDebug = createMotionDebugSnapshot({
-        result: "not-called",
-        calledFromButtonTapHandler: true,
-        errorName: null,
-        errorMessage: null,
-      });
-      console.log("[MotionDebug] permission request starting", beforeRequestDebug);
-      setMotionDebug(beforeRequestDebug);
-
       setMotionPermission("requesting");
       const result = await requestMotionAccess();
-      const afterRequestDebug = createMotionDebugSnapshot({
-        result,
-        calledFromButtonTapHandler: true,
-        errorName: null,
-        errorMessage: null,
-      });
-      console.log("[MotionDebug] permission request result", afterRequestDebug);
-      setMotionDebug(afterRequestDebug);
 
       if (result === "granted") {
         setMotionPermission("granted");
@@ -183,15 +115,7 @@ function ReadyRoomPage({
 
       setMotionPermission(result);
       setPermissionMessage("Motion access is required to play on mobile. Please enable motion permission and try again.");
-    } catch (error) {
-      const errorDebug = createMotionDebugSnapshot({
-        result: "denied",
-        calledFromButtonTapHandler: true,
-        errorName: error instanceof Error ? error.name : "UnknownError",
-        errorMessage: error instanceof Error ? error.message : String(error),
-      });
-      console.log("[MotionDebug] permission request error", errorDebug);
-      setMotionDebug(errorDebug);
+    } catch {
       setMotionPermission("denied");
       setPermissionMessage("Motion access is required to play on mobile. Please enable motion permission and try again.");
     }
@@ -415,33 +339,6 @@ function ReadyRoomPage({
           </div>
 
           {permissionMessage ? <p className="section-text ready-permission-message">{permissionMessage}</p> : null}
-          {motionDebug ? (
-            <pre
-              style={{
-                maxWidth: "min(92vw, 760px)",
-                margin: 0,
-                color: "#194777",
-                fontSize: "0.72rem",
-                lineHeight: 1.35,
-                textAlign: "left",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {`[MotionDebug]
-result: ${motionDebug.result}
-calledFromButtonTapHandler: ${motionDebug.calledFromButtonTapHandler}
-typeof DeviceMotionEvent: ${motionDebug.deviceMotionEventType}
-typeof DeviceMotionEvent.requestPermission: ${motionDebug.deviceMotionRequestPermissionType}
-typeof DeviceOrientationEvent: ${motionDebug.deviceOrientationEventType}
-typeof DeviceOrientationEvent.requestPermission: ${motionDebug.deviceOrientationRequestPermissionType}
-userAgent: ${motionDebug.userAgent}
-pageUrl: ${motionDebug.pageUrl}
-pageProtocol: ${motionDebug.pageProtocol}
-window.isSecureContext: ${motionDebug.isSecureContext}
-errorName: ${motionDebug.errorName ?? "none"}
-errorMessage: ${motionDebug.errorMessage ?? "none"}`}
-            </pre>
-          ) : null}
           {isPreparingMatch ? <p className="section-text ready-permission-message">Loading the duel gear...</p> : null}
 
           <div className="ready-controls">
