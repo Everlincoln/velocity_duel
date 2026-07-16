@@ -3493,7 +3493,7 @@ body::before {
 @supports (-webkit-touch-callout: none) {
   @media (orientation: landscape) and (pointer: coarse) and (max-height: 560px) {
     .ready-stage {
-      transform: translateY(-20px);
+      transform: translateY(-28px);
     }
   }
 }
