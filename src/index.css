@@ -3151,14 +3151,14 @@ body::before {
   }
 
   .ready-screen {
-    padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom))
+    padding: max(4px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
       max(12px, env(safe-area-inset-left));
     overflow: hidden;
   }
 
   .ready-shell {
     width: min(100%, 1180px);
-    min-height: calc(100dvh - max(6px, env(safe-area-inset-top)) - max(18px, env(safe-area-inset-bottom)));
+    min-height: calc(100dvh - max(4px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
   }
 
   .ready-stars .ready-dot,
@@ -3170,18 +3170,18 @@ body::before {
   .ready-stage {
     width: 100%;
     max-height: 100%;
-    gap: 6px;
+    gap: 2px;
     align-content: start;
     justify-content: center;
   }
 
   .ready-room-code {
-    gap: 4px;
+    gap: 2px;
   }
 
   .ready-room-code-copy {
     gap: 8px;
-    padding: 7px 11px;
+    padding: 5px 10px;
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.12);
     box-shadow: 0 6px 16px rgba(31, 108, 179, 0.1);
@@ -3213,6 +3213,7 @@ body::before {
 
   .ready-title {
     font-size: clamp(1.8rem, 5.5vw, 2.8rem);
+    line-height: 0.86;
     text-shadow:
       -1.5px -1.5px 0 rgba(23, 56, 101, 0.9),
       1.5px -1.5px 0 rgba(23, 56, 101, 0.9),
@@ -3229,7 +3230,7 @@ body::before {
   }
 
   .ready-player {
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
     align-content: start;
     justify-items: center;
@@ -3311,9 +3312,16 @@ body::before {
   }
 
   .ready-permission-message {
+    margin: 0;
     max-width: min(100%, 680px);
     font-size: 0.74rem;
     line-height: 1.2;
+  }
+
+  .ready-controls {
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
   }
 }
 
