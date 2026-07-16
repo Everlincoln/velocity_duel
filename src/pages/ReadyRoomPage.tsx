@@ -386,7 +386,9 @@ function ReadyRoomPage({
                 {player1Name}
                 {player1IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
               </div>
-              {renderPlayerAction(player1IsCurrent, player1Present, displayPlayer1Ready, handlePlayer1Toggle)}
+              <div className="ready-action-slot">
+                {renderPlayerAction(player1IsCurrent, player1Present, displayPlayer1Ready, handlePlayer1Toggle)}
+              </div>
             </div>
 
             <div className={`ready-count-zone ${displayCountdown === null ? "ready-count-hidden" : ""}`}>
@@ -406,7 +408,9 @@ function ReadyRoomPage({
                 {player2Name}
                 {player2IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
               </div>
-              {renderPlayerAction(player2IsCurrent, player2Present, displayPlayer2Ready, handlePlayer2Toggle)}
+              <div className="ready-action-slot">
+                {renderPlayerAction(player2IsCurrent, player2Present, displayPlayer2Ready, handlePlayer2Toggle)}
+              </div>
             </div>
           </div>
 
