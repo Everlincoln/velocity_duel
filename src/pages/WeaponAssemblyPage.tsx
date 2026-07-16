@@ -3,7 +3,13 @@ import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
-import { playGameSound, unlockGameAudio } from "../lib/gameAudio";
+import {
+  getAssemblyAudioDiagnostics,
+  playGameSound,
+  recordAssemblySnapDetected,
+  subscribeAssemblyAudioDiagnostics,
+  unlockGameAudio,
+} from "../lib/gameAudio";
 import {
   resolveWeaponLayout,
   WEAPON_CANVAS_HEIGHT,
@@ -76,6 +82,11 @@ type DragPerfStats = {
   snapDetectedAt: number | null;
 };
 
+const SNAP_SOUND_BY_PART: Partial<Record<WeaponPartId, "magazine-click" | "slide-rack">> = {
+  weaponMagazine: "magazine-click",
+  weaponSlide: "slide-rack",
+};
+
 function buildGameplayLayout(
   targetLayout: WeaponLayoutPreset,
   installedParts: WeaponPartId[],
@@ -111,6 +122,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   const [draggingPartId, setDraggingPartId] = useState<WeaponPartId | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [debugInfo, setDebugInfo] = useState<AssemblyDebugInfo | null>(null);
+  const [audioDiagnostics, setAudioDiagnostics] = useState(() => getAssemblyAudioDiagnostics());
   const [partPositions, setPartPositions] = useState<Partial<Record<WeaponPartId, { x: number; y: number }>>>({
     weaponMagazine: MAGAZINE_START,
     weaponSlide: SLIDE_START,
@@ -290,6 +302,16 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   }, [debugMode, layout, layoutResolution.source, step, targetLayout, visiblePartIds]);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+
+    return subscribeAssemblyAudioDiagnostics(() => {
+      setAudioDiagnostics(getAssemblyAudioDiagnostics());
+    });
+  }, []);
+
+  useEffect(() => {
     if (step !== "complete") {
       return;
     }
@@ -382,10 +404,10 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     if (!playedSnapSoundRef.current.has(partId)) {
       playedSnapSoundRef.current.add(partId);
       const soundPlayCalledAt = performance.now();
-      if (partId === "weaponMagazine") {
-        playGameSound("magazine-click");
-      } else if (partId === "weaponSlide") {
-        playGameSound("slide-rack");
+      const snapSoundId = SNAP_SOUND_BY_PART[partId];
+      if (snapSoundId) {
+        recordAssemblySnapDetected(snapSoundId);
+        playGameSound(snapSoundId);
       }
       console.log("[AssemblyPerf] snap timing", {
         partId,
@@ -597,6 +619,21 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
             visiblePartIds={visiblePartIds}
           />
         </section>
+
+        {import.meta.env.DEV ? (
+          <p
+            style={{
+              margin: 0,
+              color: "rgba(25, 71, 119, 0.72)",
+              fontSize: "0.72rem",
+              fontWeight: 800,
+              textAlign: "center",
+            }}
+          >
+            Audio snap {audioDiagnostics.snapDetectedCount} / play {audioDiagnostics.playAttemptedCount} / started{" "}
+            {audioDiagnostics.playStartedCount} / rejected {audioDiagnostics.playRejectedCount}
+          </p>
+        ) : null}
 
         <div className="layout-editor-card" style={{ display: "none" }}>
           <p className="layout-editor-panel-kicker">Loaded Snap Targets</p>
