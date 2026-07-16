@@ -3516,8 +3516,14 @@ body::before {
 
 @supports (-webkit-touch-callout: none) {
   @media (orientation: landscape) and (pointer: coarse) and (max-height: 560px) {
-    .home-simple-card {
+    .home-simple-title {
       transform: translateY(6px);
+    }
+
+    .home-nickname-input {
+      min-height: 50px;
+      padding: 0 12px;
+      line-height: 1.2;
     }
 
     .ready-stage {
