@@ -64,6 +64,17 @@ const MAGAZINE_START = { x: 320, y: 690 };
 const SLIDE_START = { x: 1260, y: 250 };
 const MAGAZINE_SNAP_DISTANCE = 120;
 const SLIDE_SNAP_DISTANCE = 150;
+const SHOW_ASSEMBLY_DEBUG = false;
+
+type DragPerfStats = {
+  partId: WeaponPartId;
+  startedAt: number;
+  moveCount: number;
+  totalMoveDuration: number;
+  maxMoveDuration: number;
+  renderCountAtStart: number;
+  snapDetectedAt: number | null;
+};
 
 function buildGameplayLayout(
   targetLayout: WeaponLayoutPreset,
@@ -92,7 +103,7 @@ function buildGameplayLayout(
 }
 
 function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
-  const [debugMode, setDebugMode] = useState(true);
+  const [debugMode, setDebugMode] = useState(SHOW_ASSEMBLY_DEBUG);
   const [layoutResolution] = useState(() => resolveWeaponLayout());
   const [targetLayout] = useState(() => layoutResolution.layout);
   const [step, setStep] = useState<AssemblyStep>("magazine");
@@ -107,10 +118,15 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   const activePointerIdRef = useRef<number | null>(null);
   const capturedElementRef = useRef<HTMLButtonElement | null>(null);
   const playedSnapSoundRef = useRef<Set<WeaponPartId>>(new Set());
+  const stageRectRef = useRef<DOMRect | null>(null);
+  const dragPerfRef = useRef<DragPerfStats | null>(null);
+  const renderCountRef = useRef(0);
+  const finalAssemblyCompletedAtRef = useRef<number | null>(null);
   const screenRef = useRef<HTMLElement | null>(null);
   const shellRef = useRef<HTMLElement | null>(null);
   const canvasCardRef = useRef<HTMLElement | null>(null);
   const lastLoggedStepRef = useRef<AssemblyStep | null>(null);
+  renderCountRef.current += 1;
 
   const activePartId: WeaponPartId | null =
     step === "magazine" ? "weaponMagazine" : step === "slide" ? "weaponSlide" : null;
@@ -131,16 +147,10 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   }, [step]);
 
   useEffect(() => {
-    console.log("[WeaponAssembly] layout source", layoutResolution.source);
-    console.log("[WeaponAssembly] layout version", targetLayout.layoutVersion);
-    console.log("[WeaponAssembly] loaded layout JSON", JSON.stringify(targetLayout, null, 2));
-    console.log("[WeaponAssembly] canvas width/height", {
-      canvasWidth: targetLayout.canvasWidth,
-      canvasHeight: targetLayout.canvasHeight,
-    });
-  }, [layoutResolution.source, targetLayout]);
+    if (!debugMode) {
+      return;
+    }
 
-  useEffect(() => {
     const updateDebugInfo = () => {
       const screenElement = screenRef.current;
       const shellElement = shellRef.current;
@@ -277,7 +287,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       window.removeEventListener("resize", updateDebugInfo);
       window.removeEventListener("orientationchange", updateDebugInfo);
     };
-  }, [layout, layoutResolution.source, step, targetLayout, visiblePartIds]);
+  }, [debugMode, layout, layoutResolution.source, step, targetLayout, visiblePartIds]);
 
   useEffect(() => {
     if (step !== "complete") {
@@ -286,6 +296,11 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
 
     setReactionTimeMs(null);
     const timeout = window.setTimeout(() => {
+      if (finalAssemblyCompletedAtRef.current !== null) {
+        console.log("[AssemblyPerf] final assembly to fire phase", {
+          elapsedMs: Number((performance.now() - finalAssemblyCompletedAtRef.current).toFixed(2)),
+        });
+      }
       setCurrentPage("fire");
     }, 1400);
 
@@ -302,31 +317,48 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     }));
   };
 
-  const toLogicalPoint = (event: ReactPointerEvent<HTMLDivElement | HTMLButtonElement>) => {
-    const currentTarget = event.currentTarget as HTMLElement;
+  const getStageRect = (element: HTMLElement) => {
     const stage =
-      (currentTarget.closest(".weapon-canvas-stage") as HTMLDivElement | null) ??
-      (currentTarget.querySelector(".weapon-canvas-stage") as HTMLDivElement | null);
-    if (!stage) {
+      (element.closest(".weapon-canvas-stage") as HTMLDivElement | null) ??
+      (element.querySelector(".weapon-canvas-stage") as HTMLDivElement | null);
+
+    return stage?.getBoundingClientRect() ?? null;
+  };
+
+  const toLogicalPoint = (event: ReactPointerEvent<HTMLDivElement | HTMLButtonElement>, cachedRect?: DOMRect | null) => {
+    const currentTarget = event.currentTarget as HTMLElement;
+    const rect = cachedRect ?? getStageRect(currentTarget);
+    if (!rect) {
       return null;
     }
 
-    const rect = stage.getBoundingClientRect();
-    console.log("[WeaponAssembly] canvas scale", {
-      rectWidth: rect.width,
-      rectHeight: rect.height,
-      canvasWidth: WEAPON_CANVAS_WIDTH,
-      canvasHeight: WEAPON_CANVAS_HEIGHT,
-      scaleX: rect.width / WEAPON_CANVAS_WIDTH,
-      scaleY: rect.height / WEAPON_CANVAS_HEIGHT,
-    });
     return {
       x: ((event.clientX - rect.left) / rect.width) * WEAPON_CANVAS_WIDTH,
       y: ((event.clientY - rect.top) / rect.height) * WEAPON_CANVAS_HEIGHT,
     };
   };
 
-  const completeStep = (partId: WeaponPartId) => {
+  const logDragPerf = (reason: "snap" | "release" | "cancel") => {
+    const stats = dragPerfRef.current;
+    if (!stats) {
+      return;
+    }
+
+    const elapsedSeconds = Math.max((performance.now() - stats.startedAt) / 1000, 0.001);
+    console.log("[AssemblyPerf] drag summary", {
+      partId: stats.partId,
+      reason,
+      pointermoveEventsPerSecond: Number((stats.moveCount / elapsedSeconds).toFixed(2)),
+      reactRendersDuringDrag: renderCountRef.current - stats.renderCountAtStart,
+      averagePointermoveHandlerDurationMs: stats.moveCount
+        ? Number((stats.totalMoveDuration / stats.moveCount).toFixed(3))
+        : 0,
+      maxPointermoveHandlerDurationMs: Number(stats.maxMoveDuration.toFixed(3)),
+    });
+    dragPerfRef.current = null;
+  };
+
+  const completeStep = (partId: WeaponPartId, snapDetectedAt = performance.now()) => {
     const capturedElement = capturedElementRef.current;
     const pointerId = activePointerIdRef.current;
     if (capturedElement && pointerId !== null && capturedElement.hasPointerCapture(pointerId)) {
@@ -334,19 +366,34 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     }
 
     const targetPart = targetLayout.parts[partId];
+    const visualUpdateScheduledAt = performance.now();
     updatePartPosition(partId, targetPart.x, targetPart.y);
     setInstalledParts((current) => (current.includes(partId) ? current : [...current, partId]));
     setDraggingPartId(null);
+    window.requestAnimationFrame(() => {
+      console.log("[AssemblyPerf] snap to next frame", {
+        partId,
+        elapsedMs: Number((performance.now() - snapDetectedAt).toFixed(3)),
+      });
+    });
     activePointerIdRef.current = null;
     capturedElementRef.current = null;
+    stageRectRef.current = null;
     if (!playedSnapSoundRef.current.has(partId)) {
       playedSnapSoundRef.current.add(partId);
+      const soundPlayCalledAt = performance.now();
       if (partId === "weaponMagazine") {
         playGameSound("magazine-click");
       } else if (partId === "weaponSlide") {
         playGameSound("slide-rack");
       }
+      console.log("[AssemblyPerf] snap timing", {
+        partId,
+        snapToVisualUpdateScheduleMs: Number((visualUpdateScheduledAt - snapDetectedAt).toFixed(3)),
+        snapToSoundPlayCallMs: Number((soundPlayCalledAt - snapDetectedAt).toFixed(3)),
+      });
     }
+    logDragPerf("snap");
 
     if (partId === "weaponMagazine") {
       setStep("slide");
@@ -354,6 +401,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     }
 
     if (partId === "weaponSlide") {
+      finalAssemblyCompletedAtRef.current = performance.now();
       setStep("complete");
     }
   };
@@ -366,20 +414,12 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     const threshold = partId === "weaponMagazine" ? MAGAZINE_SNAP_DISTANCE : SLIDE_SNAP_DISTANCE;
     const didSnap = distance <= threshold;
 
-    console.log("[WeaponAssembly] snap check", {
-      layoutSource: layoutResolution.source,
-      layoutVersion: targetLayout.layoutVersion,
-      partId,
-      draggedLogicalX: Number(x.toFixed(2)),
-      draggedLogicalY: Number(y.toFixed(2)),
-      targetLogicalX: target.x,
-      targetLogicalY: target.y,
-      distance: Number(distance.toFixed(2)),
-      didSnap,
-    });
-
     if (didSnap) {
-      completeStep(partId);
+      const snapDetectedAt = performance.now();
+      if (dragPerfRef.current) {
+        dragPerfRef.current.snapDetectedAt = snapDetectedAt;
+      }
+      completeStep(partId, snapDetectedAt);
       return true;
     }
 
@@ -391,12 +431,23 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       return;
     }
 
-    const point = toLogicalPoint(event);
+    const stageRect = getStageRect(event.currentTarget);
+    stageRectRef.current = stageRect;
+    const point = toLogicalPoint(event, stageRect);
     if (!point) {
       return;
     }
 
     const current = layout.parts[partId];
+    dragPerfRef.current = {
+      partId,
+      startedAt: performance.now(),
+      moveCount: 0,
+      totalMoveDuration: 0,
+      maxMoveDuration: 0,
+      renderCountAtStart: renderCountRef.current,
+      snapDetectedAt: null,
+    };
     setDraggingPartId(partId);
     setDragOffset({
       x: point.x - current.x,
@@ -413,7 +464,8 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       return;
     }
 
-    const point = toLogicalPoint(event);
+    const moveStartedAt = performance.now();
+    const point = toLogicalPoint(event, stageRectRef.current);
     if (!point) {
       return;
     }
@@ -422,6 +474,13 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     const nextY = point.y - dragOffset.y;
     updatePartPosition(draggingPartId, nextX, nextY);
     maybeSnapPart(draggingPartId, nextX, nextY);
+    const moveDuration = performance.now() - moveStartedAt;
+    const perfStats = dragPerfRef.current;
+    if (perfStats) {
+      perfStats.moveCount += 1;
+      perfStats.totalMoveDuration += moveDuration;
+      perfStats.maxMoveDuration = Math.max(perfStats.maxMoveDuration, moveDuration);
+    }
   };
 
   const releaseCapturedPointer = () => {
@@ -434,10 +493,12 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
 
     activePointerIdRef.current = null;
     capturedElementRef.current = null;
+    stageRectRef.current = null;
   };
 
   const handleCanvasPointerUp = () => {
     releaseCapturedPointer();
+    logDragPerf("release");
     setDraggingPartId(null);
   };
 
@@ -452,6 +513,8 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
 
     activePointerIdRef.current = null;
     capturedElementRef.current = null;
+    stageRectRef.current = null;
+    logDragPerf("release");
     setDraggingPartId(null);
   };
 
