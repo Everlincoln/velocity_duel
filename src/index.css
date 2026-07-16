@@ -514,6 +514,21 @@ body::before {
   width: 100%;
 }
 
+.ready-action-slot {
+  width: clamp(220px, 24vw, 260px);
+  min-height: 68px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+.ready-action-slot > .ready-badge,
+.ready-action-slot > .ready-status {
+  width: 100%;
+  min-width: 0;
+  min-height: 68px;
+}
+
 .ready-avatar {
   position: relative;
   width: min(36vw, 410px);
@@ -703,7 +718,7 @@ body::before {
 }
 
 .ready-controls {
-  display: flex;
+  display: none;
   gap: 14px;
   opacity: 0;
   pointer-events: none;
@@ -2848,8 +2863,19 @@ body::before {
   .ready-status {
     min-height: 56px;
     min-width: min(34vw, 220px);
+    width: min(100%, 220px);
     padding: 0 18px;
     font-size: clamp(1rem, 2.2vw, 1.35rem);
+  }
+
+  .ready-action-slot {
+    width: min(100%, 220px);
+    min-height: 56px;
+  }
+
+  .ready-action-slot > .ready-badge,
+  .ready-action-slot > .ready-status {
+    min-height: 56px;
   }
 
   .ready-permission-message {
@@ -3014,9 +3040,20 @@ body::before {
   .ready-status {
     min-height: 48px;
     min-width: min(68vw, 210px);
+    width: min(68vw, 210px);
     padding: 0 14px;
     font-size: 0.95rem;
     border-width: 3px;
+  }
+
+  .ready-action-slot {
+    width: min(68vw, 210px);
+    min-height: 48px;
+  }
+
+  .ready-action-slot > .ready-badge,
+  .ready-action-slot > .ready-status {
+    min-height: 48px;
   }
 
   .ready-permission-message {
@@ -3153,12 +3190,15 @@ body::before {
   .ready-screen {
     padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom))
       max(12px, env(safe-area-inset-left));
+    height: 100dvh;
+    min-height: 100dvh;
     overflow: hidden;
   }
 
   .ready-shell {
     width: min(100%, 1180px);
-    min-height: calc(100dvh - max(6px, env(safe-area-inset-top)) - max(18px, env(safe-area-inset-bottom)));
+    min-height: 0;
+    height: calc(100dvh - max(6px, env(safe-area-inset-top)) - max(18px, env(safe-area-inset-bottom)));
   }
 
   .ready-stars .ready-dot,
@@ -3284,8 +3324,18 @@ body::before {
     border-width: 2px;
     gap: 6px;
     box-shadow: 0 4px 12px rgba(96, 202, 127, 0.08);
-    width: min(100%, 176px);
+    width: 100%;
     max-width: 100%;
+  }
+
+  .ready-action-slot {
+    width: min(100%, 176px);
+    min-height: 44px;
+  }
+
+  .ready-action-slot > .ready-badge,
+  .ready-action-slot > .ready-status {
+    min-height: 44px;
   }
 
   .ready-badge-off {
