@@ -3536,7 +3536,18 @@ body::before {
       line-height: 1.2;
     }
 
+    .ready-screen {
+      height: 100svh;
+      min-height: 100svh;
+      overflow: visible;
+    }
+
+    .ready-shell {
+      min-height: calc(100svh - max(4px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
+    }
+
     .ready-stage {
+      max-height: none;
       transform: translateY(-28px);
     }
 
