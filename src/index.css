@@ -294,8 +294,8 @@ body::before {
 }
 
 .home-simple-actions .home-play-button {
-  min-height: 72px;
-  font-size: 1.64rem;
+  min-height: 62px;
+  font-size: 1.34rem;
   font-weight: 950;
   letter-spacing: 0.055em;
 }
