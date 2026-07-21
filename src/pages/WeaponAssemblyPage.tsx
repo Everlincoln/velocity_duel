@@ -324,16 +324,12 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     }
 
     setReactionTimeMs(null);
-    const timeout = window.setTimeout(() => {
-      if (finalAssemblyCompletedAtRef.current !== null) {
-        console.log("[AssemblyPerf] final assembly to fire phase", {
-          elapsedMs: Number((performance.now() - finalAssemblyCompletedAtRef.current).toFixed(2)),
-        });
-      }
-      setCurrentPage("fire");
-    }, 1400);
-
-    return () => window.clearTimeout(timeout);
+    if (finalAssemblyCompletedAtRef.current !== null && LOG_ASSEMBLY_PERF) {
+      console.log("[AssemblyPerf] final assembly to fire phase", {
+        elapsedMs: Number((performance.now() - finalAssemblyCompletedAtRef.current).toFixed(2)),
+      });
+    }
+    setCurrentPage("fire");
   }, [setCurrentPage, setReactionTimeMs, step]);
 
   const updatePartPosition = (partId: WeaponPartId, x: number, y: number) => {

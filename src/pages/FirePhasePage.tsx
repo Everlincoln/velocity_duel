@@ -14,7 +14,6 @@ type Props = {
 };
 
 const SHAKE_THRESHOLD = 12;
-const ARMING_DELAY_MS = 800;
 
 function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setCurrentPage, setReactionTimeMs }: Props) {
   const layout = useMemo(() => readSavedWeaponLayout(), []);
@@ -33,7 +32,6 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
   const shakeTimeoutRef = useRef<number | null>(null);
   const flashTimeoutRef = useRef<number | null>(null);
   const resultTimeoutRef = useRef<number | null>(null);
-  const armTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     console.log("[FirePhase] reset fire state");
@@ -46,20 +44,11 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
     setReactionMs(null);
     startTimeRef.current = performance.now();
     hasFiredRef.current = false;
-    isArmedRef.current = false;
+    isArmedRef.current = true;
     hasBaselineRef.current = false;
     lastAccelerationRef.current = { x: 0, y: 0, z: 0 };
 
-    console.log("[FirePhase] arming delay start", { delayMs: ARMING_DELAY_MS });
-    armTimeoutRef.current = window.setTimeout(() => {
-      isArmedRef.current = true;
-      console.log("[FirePhase] armed");
-    }, ARMING_DELAY_MS);
-
     return () => {
-      if (armTimeoutRef.current) {
-        window.clearTimeout(armTimeoutRef.current);
-      }
       if (recoilTimeoutRef.current) {
         window.clearTimeout(recoilTimeoutRef.current);
       }
