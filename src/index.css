@@ -283,7 +283,7 @@ body::before {
 .home-simple-actions {
   width: min(100%, 340px);
   display: grid;
-  gap: 14px;
+  gap: 10px;
   position: relative;
   z-index: 4;
 }
@@ -294,15 +294,15 @@ body::before {
 }
 
 .home-simple-actions .home-play-button {
-  min-height: 78px;
-  font-size: 1.76rem;
+  min-height: 72px;
+  font-size: 1.64rem;
   font-weight: 950;
   letter-spacing: 0.055em;
 }
 
 .home-simple-actions .home-join-button {
-  min-height: 62px;
-  font-size: 1.18rem;
+  min-height: 56px;
+  font-size: 1.08rem;
   font-weight: 850;
 }
 
@@ -3118,7 +3118,7 @@ body::before {
 
   .home-simple-actions {
     width: min(100%, 300px);
-    gap: 10px;
+    gap: 8px;
   }
 
   .screen-home .button-big {
@@ -3127,13 +3127,13 @@ body::before {
   }
 
   .screen-home .home-play-button {
-    min-height: 60px;
-    font-size: 1.38rem;
+    min-height: 56px;
+    font-size: 1.28rem;
   }
 
   .screen-home .home-join-button {
-    min-height: 48px;
-    font-size: 0.98rem;
+    min-height: 44px;
+    font-size: 0.9rem;
   }
 
   .weapon-mini-screen {
