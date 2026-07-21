@@ -294,16 +294,25 @@ body::before {
 }
 
 .home-simple-actions .home-play-button {
-  min-height: 62px;
-  font-size: 1.34rem;
+
+  min-height: 59px;     /* 原来 62px */
+
+  font-size: 1.28rem;   /* 原来 1.34rem */
+
   font-weight: 950;
+
   letter-spacing: 0.055em;
+
 }
 
 .home-simple-actions .home-join-button {
-  min-height: 56px;
-  font-size: 1.08rem;
+
+  min-height: 54px;     /* 原来 56px */
+
+  font-size: 1.05rem;   /* 原来 1.08rem */
+
   font-weight: 850;
+
 }
 
 .sr-only {
