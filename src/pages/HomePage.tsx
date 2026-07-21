@@ -53,14 +53,14 @@ function HomePage({
 
             <div className="home-simple-actions">
               <button
-                className="button button-big button-yellow"
+                className="button button-big button-yellow home-play-button"
                 onClick={() => (onStartGame ? onStartGame() : setCurrentPage("create"))}
                 disabled={roomActionLoading}
               >
-                {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "PLAY"}
+                {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "PLAY!"}
               </button>
               <button
-                className="button button-big button-blue button-home-outline"
+                className="button button-big button-blue button-home-outline home-join-button"
                 onClick={() => setCurrentPage("join")}
                 disabled={roomActionLoading}
               >

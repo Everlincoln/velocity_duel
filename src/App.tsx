@@ -11,6 +11,7 @@ import FirePhasePage from "./pages/FirePhasePage";
 import ResultPage from "./pages/ResultPage";
 import WeaponLayoutEditor from "./pages/WeaponLayoutEditor";
 import { getSocket } from "./lib/socket";
+import { unlockGameAudio } from "./lib/gameAudio";
 import { WEAPON_PARTS } from "./components/weaponCanvasConfig";
 
 export type Page =
@@ -360,6 +361,7 @@ function App() {
   };
 
   const handleCreateRoom = async () => {
+    unlockGameAudio();
     const nextRoomCode = roomCode || generateRoomCode();
     const nickname = resolveSessionNickname();
     setRoomCode(nextRoomCode);
@@ -419,6 +421,7 @@ function App() {
   };
 
   const handleJoinRoom = async (nextRoomCode: string) => {
+    unlockGameAudio();
     const trimmedRoomCode = nextRoomCode.trim().toUpperCase();
     const validationError = getJoinRoomValidationError(trimmedRoomCode);
     const nickname = resolveSessionNickname();

@@ -293,6 +293,19 @@ body::before {
   box-shadow: 0 10px 24px rgba(88, 154, 220, 0.18);
 }
 
+.home-simple-actions .home-play-button {
+  min-height: 78px;
+  font-size: 1.76rem;
+  font-weight: 950;
+  letter-spacing: 0.055em;
+}
+
+.home-simple-actions .home-join-button {
+  min-height: 62px;
+  font-size: 1.18rem;
+  font-weight: 850;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -3111,6 +3124,16 @@ body::before {
   .screen-home .button-big {
     min-height: 54px;
     font-size: 1.08rem;
+  }
+
+  .screen-home .home-play-button {
+    min-height: 60px;
+    font-size: 1.38rem;
+  }
+
+  .screen-home .home-join-button {
+    min-height: 48px;
+    font-size: 0.98rem;
   }
 
   .weapon-mini-screen {

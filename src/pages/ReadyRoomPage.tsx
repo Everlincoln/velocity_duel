@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { MotionPermissionState, Page, RoomPlayer } from "../App";
 import player1 from "../assets/characters/player1.png";
 import player2 from "../assets/characters/player2.png";
+import { unlockGameAudio } from "../lib/gameAudio";
 
 type Props = {
   roomCode: string;
@@ -69,6 +70,8 @@ function ReadyRoomPage({
   );
 
   const requestPermissionAndReady = async (playerNumber: 1 | 2) => {
+    unlockGameAudio();
+
     const triggerReady = () => {
       setPermissionMessage(null);
 
