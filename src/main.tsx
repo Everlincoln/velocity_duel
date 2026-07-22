@@ -8,6 +8,16 @@ import { registerSW } from 'virtual:pwa-register'
 
 registerSW({ immediate: true })
 
+const syncVisibleViewportHeight = () => {
+  const visibleHeight = window.visualViewport?.height ?? window.innerHeight
+  document.documentElement.style.setProperty('--app-height', `${Math.round(visibleHeight)}px`)
+}
+
+syncVisibleViewportHeight()
+window.addEventListener('resize', syncVisibleViewportHeight)
+window.addEventListener('orientationchange', syncVisibleViewportHeight)
+window.visualViewport?.addEventListener('resize', syncVisibleViewportHeight)
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
