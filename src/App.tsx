@@ -10,8 +10,10 @@ import WeaponReadyPage from "./pages/WeaponReadyPage";
 import FirePhasePage from "./pages/FirePhasePage";
 import ResultPage from "./pages/ResultPage";
 import WeaponLayoutEditor from "./pages/WeaponLayoutEditor";
+import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import { getSocket } from "./lib/socket";
 import { unlockGameAudio } from "./lib/gameAudio";
+import { requestGamePresentation } from "./lib/gamePresentation";
 import { WEAPON_PARTS } from "./components/weaponCanvasConfig";
 
 export type Page =
@@ -362,6 +364,7 @@ function App() {
 
   const handleCreateRoom = async () => {
     unlockGameAudio();
+    void requestGamePresentation();
     const nextRoomCode = roomCode || generateRoomCode();
     const nickname = resolveSessionNickname();
     setRoomCode(nextRoomCode);
@@ -422,6 +425,7 @@ function App() {
 
   const handleJoinRoom = async (nextRoomCode: string) => {
     unlockGameAudio();
+    void requestGamePresentation();
     const trimmedRoomCode = nextRoomCode.trim().toUpperCase();
     const validationError = getJoinRoomValidationError(trimmedRoomCode);
     const nickname = resolveSessionNickname();
@@ -679,6 +683,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      {currentPage === "home" ? <PwaInstallPrompt /> : null}
       {showRotateOverlay ? (
         <div className="rotate-overlay" role="dialog" aria-modal="true" aria-label="Rotate phone to play">
           <div className="rotate-overlay-card">
