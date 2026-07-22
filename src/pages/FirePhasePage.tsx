@@ -4,6 +4,7 @@ import WeaponCanvas from "../components/WeaponCanvas";
 import { readSavedWeaponLayout } from "../components/weaponCanvasConfig";
 import { playGameSound, unlockGameAudio } from "../lib/gameAudio";
 import { getSocket } from "../lib/socket";
+import { clearActiveInputFocus } from "../lib/gamePresentation";
 
 type Props = {
   motionPermission: MotionPermissionState;
@@ -32,8 +33,11 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
   const shakeTimeoutRef = useRef<number | null>(null);
   const flashTimeoutRef = useRef<number | null>(null);
   const resultTimeoutRef = useRef<number | null>(null);
+  const screenRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    clearActiveInputFocus();
+    screenRef.current?.focus({ preventScroll: true });
     console.log("[FirePhase] reset fire state");
     console.log("[FirePhase] mount");
     setReactionTimeMs(null);
@@ -150,7 +154,11 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
   }, [motionPermission, roomCode, setCurrentPage, setReactionTimeMs, socket, useSocketFlow]);
 
   return (
-    <main className={`screen fire-phase-screen ${showShake ? "fire-phase-screen-shake" : ""} ${isFired ? "is-fired" : ""}`}>
+    <main
+      ref={screenRef}
+      tabIndex={-1}
+      className={`screen fire-phase-screen ${showShake ? "fire-phase-screen-shake" : ""} ${isFired ? "is-fired" : ""}`}
+    >
       <section className="layout-editor-shell">
         <header className="layout-editor-topbar">
           <div>

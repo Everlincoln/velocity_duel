@@ -13,6 +13,14 @@ export function isStandaloneMode() {
   );
 }
 
+export function clearActiveInputFocus() {
+  const activeElement = document.activeElement;
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+  window.getSelection()?.removeAllRanges();
+}
+
 async function lockLandscape() {
   try {
     await screen.orientation?.lock?.("landscape");
