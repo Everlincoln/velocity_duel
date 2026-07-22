@@ -13,7 +13,7 @@ import WeaponLayoutEditor from "./pages/WeaponLayoutEditor";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import { getSocket } from "./lib/socket";
 import { unlockGameAudio } from "./lib/gameAudio";
-import { requestGamePresentation } from "./lib/gamePresentation";
+import { clearActiveInputFocus, requestGamePresentation } from "./lib/gamePresentation";
 import { WEAPON_PARTS } from "./components/weaponCanvasConfig";
 
 export type Page =
@@ -363,6 +363,7 @@ function App() {
   };
 
   const handleCreateRoom = async () => {
+    clearActiveInputFocus();
     unlockGameAudio();
     void requestGamePresentation();
     const nextRoomCode = roomCode || generateRoomCode();
@@ -424,6 +425,7 @@ function App() {
   };
 
   const handleJoinRoom = async (nextRoomCode: string) => {
+    clearActiveInputFocus();
     unlockGameAudio();
     void requestGamePresentation();
     const trimmedRoomCode = nextRoomCode.trim().toUpperCase();

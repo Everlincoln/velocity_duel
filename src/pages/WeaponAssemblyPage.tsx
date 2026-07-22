@@ -503,9 +503,11 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
   };
 
   const handlePartPointerDown = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (partId !== activePartId) {
+    if (partId !== activePartId || activePointerIdRef.current !== null) {
       return;
     }
+
+    event.preventDefault();
 
     const stageRect = getStageRect(event.currentTarget);
     stageRectRef.current = stageRect;
@@ -536,12 +538,16 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     unlockGameAudio();
     activePointerIdRef.current = event.pointerId;
     capturedElementRef.current = event.currentTarget;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // The canvas-level handlers remain available when a browser declines pointer capture.
+    }
   };
 
-  const handleCanvasPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handleCanvasPointerMove = (event: ReactPointerEvent<HTMLDivElement | HTMLButtonElement>) => {
     const draggingPartId = activeDragPartIdRef.current;
-    if (!draggingPartId) {
+    if (!draggingPartId || event.pointerId !== activePointerIdRef.current) {
       return;
     }
 
@@ -566,6 +572,15 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
       perfStats.totalMoveDuration += moveDuration;
       perfStats.maxMoveDuration = Math.max(perfStats.maxMoveDuration, moveDuration);
     }
+  };
+
+  const handlePartPointerMove = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (partId !== activeDragPartIdRef.current || event.pointerId !== activePointerIdRef.current) {
+      return;
+    }
+
+    event.stopPropagation();
+    handleCanvasPointerMove(event);
   };
 
   const commitActiveDragPosition = () => {
@@ -595,16 +610,22 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     clearPendingVisualFrame();
   };
 
-  const handleCanvasPointerUp = () => {
+  const handleCanvasPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerId !== activePointerIdRef.current) {
+      return;
+    }
+
     commitActiveDragPosition();
     releaseCapturedPointer();
     logDragPerf("release");
   };
 
   const handlePartPointerUp = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (activeDragPartIdRef.current !== partId) {
+    if (activeDragPartIdRef.current !== partId || event.pointerId !== activePointerIdRef.current) {
       return;
     }
+
+    event.stopPropagation();
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -617,6 +638,20 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     stageRectRef.current = null;
     clearPendingVisualFrame();
     logDragPerf("release");
+  };
+
+  const handlePartLostPointerCapture = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (activeDragPartIdRef.current !== partId || event.pointerId !== activePointerIdRef.current) {
+      return;
+    }
+
+    commitActiveDragPosition();
+    activePointerIdRef.current = null;
+    activeDragPartIdRef.current = null;
+    capturedElementRef.current = null;
+    stageRectRef.current = null;
+    clearPendingVisualFrame();
+    logDragPerf("cancel");
   };
 
   const handleClearWeaponLayoutAndReload = () => {
@@ -682,7 +717,9 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
           <WeaponCanvas
             debug={debugMode}
             layout={layout}
+            onPartLostPointerCapture={handlePartLostPointerCapture}
             onPartPointerDown={handlePartPointerDown}
+            onPartPointerMove={handlePartPointerMove}
             onPartPointerUp={handlePartPointerUp}
             partClassName={step === "complete" ? "is-readonly" : ""}
             selectedPartId={activePartId}

@@ -6,6 +6,8 @@ type WeaponCanvasProps = {
   ghostMode?: boolean;
   layout: WeaponLayoutPreset;
   onPartPointerDown?: (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onPartLostPointerCapture?: (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onPartPointerMove?: (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => void;
   onPartPointerUp?: (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => void;
   onPartSelect?: (partId: WeaponPartId) => void;
   partClassName?: string;
@@ -20,6 +22,8 @@ function WeaponCanvas({
   ghostMode = false,
   layout,
   onPartPointerDown,
+  onPartLostPointerCapture,
+  onPartPointerMove,
   onPartPointerUp,
   onPartSelect,
   partClassName = "",
@@ -57,10 +61,14 @@ function WeaponCanvas({
               }}
               onClick={() => onPartSelect?.(part.id)}
               onPointerDown={(event) => onPartPointerDown?.(part.id, event)}
+              onLostPointerCapture={(event) => onPartLostPointerCapture?.(part.id, event)}
+              onPointerMove={(event) => onPartPointerMove?.(part.id, event)}
               onPointerUp={(event) => onPartPointerUp?.(part.id, event)}
               onPointerCancel={(event) => onPartPointerUp?.(part.id, event)}
+              onContextMenu={(event) => onPartPointerDown && event.preventDefault()}
+              onDragStart={(event) => event.preventDefault()}
             >
-              <img src={part.src} alt={part.label} />
+              <img src={part.src} alt={part.label} draggable={false} />
               {showLabels ? <span className="weapon-canvas-part-label">{part.label}</span> : null}
               {debug ? (
                 <>
