@@ -4,6 +4,9 @@ import './index.css'
 import './styles/create-room.css'
 import './styles/ready-room.css'
 import App from './App.tsx'
+import { registerSW } from 'virtual:pwa-register'
+
+registerSW({ immediate: true })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
