@@ -8,20 +8,21 @@ type BeforeInstallPromptEvent = Event & {
 
 const DISMISSED_KEY = "velocity-duel-pwa-prompt-dismissed";
 
-function isIosDevice() {
+function isMobileDevice() {
   return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    /Android|iPad|iPhone|iPod|Mobile|Tablet/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
+    window.matchMedia("(pointer: coarse)").matches
   );
 }
 
 function PwaInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showIosHelp] = useState(
+  const [showManualInstallHelp] = useState(
     () =>
       !isStandaloneMode() &&
       window.localStorage.getItem(DISMISSED_KEY) !== "true" &&
-      isIosDevice(),
+      isMobileDevice(),
   );
   const [visible, setVisible] = useState(false);
 
@@ -30,10 +31,10 @@ function PwaInstallPrompt() {
       return;
     }
 
-    let iosTimer = 0;
+    let manualHelpTimer = 0;
 
-    if (showIosHelp) {
-      iosTimer = window.setTimeout(() => setVisible(true), 1200);
+    if (showManualInstallHelp) {
+      manualHelpTimer = window.setTimeout(() => setVisible(true), 1200);
     }
 
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -48,11 +49,11 @@ function PwaInstallPrompt() {
     window.addEventListener("appinstalled", handleInstalled);
 
     return () => {
-      window.clearTimeout(iosTimer);
+      window.clearTimeout(manualHelpTimer);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleInstalled);
     };
-  }, [showIosHelp]);
+  }, [showManualInstallHelp]);
 
   const dismiss = () => {
     window.localStorage.setItem(DISMISSED_KEY, "true");
@@ -72,7 +73,7 @@ function PwaInstallPrompt() {
     setInstallEvent(null);
   };
 
-  if (!visible || (!showIosHelp && !installEvent)) {
+  if (!visible || (!showManualInstallHelp && !installEvent)) {
     return null;
   }
 
@@ -83,11 +84,11 @@ function PwaInstallPrompt() {
       </button>
       <img className="pwa-install-icon" src="/pwa-icon.svg" alt="" aria-hidden="true" />
       <div className="pwa-install-copy">
-        <strong>Play fullscreen</strong>
-        {showIosHelp ? (
-          <span>Tap Safari’s Share button, then “Add to Home Screen”.</span>
-        ) : (
+        <strong>Install for fullscreen</strong>
+        {installEvent ? (
           <span>Install Velocity Duel for a fullscreen game experience.</span>
+        ) : (
+          <span>Open your browser menu or Share options, then choose “Install app” or “Add to Home Screen”.</span>
         )}
       </div>
       {installEvent ? (
