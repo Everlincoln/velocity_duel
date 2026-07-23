@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRef } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Page } from "../App";
-import WeaponCanvas from "../components/WeaponCanvas";
+import WeaponCanvas, { type PartGesturePoint } from "../components/WeaponCanvas";
 import {
   getAssemblyAudioDiagnostics,
   playGameSound,
@@ -128,9 +127,7 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
     weaponMagazine: MAGAZINE_START,
     weaponSlide: SLIDE_START,
   });
-  const activePointerIdRef = useRef<number | null>(null);
   const activeDragPartIdRef = useRef<WeaponPartId | null>(null);
-  const capturedElementRef = useRef<HTMLButtonElement | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const dragPositionRef = useRef<Partial<Record<WeaponPartId, { x: number; y: number }>>>({
     weaponMagazine: MAGAZINE_START,
@@ -361,10 +358,9 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
   };
 
   const applyPartVisualPosition = (partId: WeaponPartId, x: number, y: number) => {
-    const partElement =
-      capturedElementRef.current?.dataset.partId === partId
-        ? capturedElementRef.current
-        : (canvasCardRef.current?.querySelector(`[data-part-id="${partId}"]`) as HTMLButtonElement | null);
+    const partElement = canvasCardRef.current?.querySelector(
+      `[data-part-id="${partId}"]`,
+    ) as HTMLButtonElement | null;
     if (!partElement) {
       return;
     }
@@ -399,16 +395,15 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
     return stage?.getBoundingClientRect() ?? null;
   };
 
-  const toLogicalPoint = (event: ReactPointerEvent<HTMLDivElement | HTMLButtonElement>, cachedRect?: DOMRect | null) => {
-    const currentTarget = event.currentTarget as HTMLElement;
-    const rect = cachedRect ?? getStageRect(currentTarget);
+  const toLogicalPoint = (point: PartGesturePoint, cachedRect: DOMRect | null) => {
+    const rect = cachedRect;
     if (!rect) {
       return null;
     }
 
     return {
-      x: ((event.clientX - rect.left) / rect.width) * WEAPON_CANVAS_WIDTH,
-      y: ((event.clientY - rect.top) / rect.height) * WEAPON_CANVAS_HEIGHT,
+      x: ((point.clientX - rect.left) / rect.width) * WEAPON_CANVAS_WIDTH,
+      y: ((point.clientY - rect.top) / rect.height) * WEAPON_CANVAS_HEIGHT,
     };
   };
 
@@ -436,11 +431,6 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
 
   const completeStep = (partId: WeaponPartId, snapDetectedAt = performance.now()) => {
     clearPendingVisualFrame();
-    const capturedElement = capturedElementRef.current;
-    const pointerId = activePointerIdRef.current;
-    if (capturedElement && pointerId !== null && capturedElement.hasPointerCapture(pointerId)) {
-      capturedElement.releasePointerCapture(pointerId);
-    }
 
     const targetPart = targetLayout.parts[partId];
     if (!playedSnapSoundRef.current.has(partId)) {
@@ -472,8 +462,6 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
       });
     }
     activeDragPartIdRef.current = null;
-    activePointerIdRef.current = null;
-    capturedElementRef.current = null;
     stageRectRef.current = null;
     logDragPerf("snap");
 
@@ -508,29 +496,34 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
     return false;
   };
 
-  const handlePartPointerDown = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (partId !== activePartId || activePointerIdRef.current !== null) {
+  const handlePartGestureStart = (
+    partId: WeaponPartId,
+    point: PartGesturePoint,
+    element: HTMLButtonElement,
+  ) => {
+    if (partId !== activePartId) {
       return;
     }
 
-    event.preventDefault();
-
-    const stageRect = getStageRect(event.currentTarget);
+    clearPendingVisualFrame();
+    activeDragPartIdRef.current = null;
+    stageRectRef.current = null;
+    const stageRect = getStageRect(element);
     stageRectRef.current = stageRect;
-    const point = toLogicalPoint(event, stageRect);
-    if (!point) {
+    const logicalPoint = toLogicalPoint(point, stageRect);
+    if (!logicalPoint) {
       return;
     }
 
-    const current = layout.parts[partId];
+    const current = dragPositionRef.current[partId] ?? layout.parts[partId];
     activeDragPartIdRef.current = partId;
     dragPositionRef.current[partId] = {
       x: current.x,
       y: current.y,
     };
     dragOffsetRef.current = {
-      x: point.x - current.x,
-      y: point.y - current.y,
+      x: logicalPoint.x - current.x,
+      y: logicalPoint.y - current.y,
     };
     dragPerfRef.current = {
       partId,
@@ -542,29 +535,22 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
       snapDetectedAt: null,
     };
     unlockGameAudio();
-    activePointerIdRef.current = event.pointerId;
-    capturedElementRef.current = event.currentTarget;
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // The canvas-level handlers remain available when a browser declines pointer capture.
-    }
   };
 
-  const handleCanvasPointerMove = (event: ReactPointerEvent<HTMLDivElement | HTMLButtonElement>) => {
+  const handlePartGestureMove = (partId: WeaponPartId, point: PartGesturePoint) => {
     const draggingPartId = activeDragPartIdRef.current;
-    if (!draggingPartId || event.pointerId !== activePointerIdRef.current) {
+    if (!draggingPartId || draggingPartId !== partId) {
       return;
     }
 
     const moveStartedAt = performance.now();
-    const point = toLogicalPoint(event, stageRectRef.current);
-    if (!point) {
+    const logicalPoint = toLogicalPoint(point, stageRectRef.current);
+    if (!logicalPoint) {
       return;
     }
 
-    const nextX = point.x - dragOffsetRef.current.x;
-    const nextY = point.y - dragOffsetRef.current.y;
+    const nextX = logicalPoint.x - dragOffsetRef.current.x;
+    const nextY = logicalPoint.y - dragOffsetRef.current.y;
     dragPositionRef.current[draggingPartId] = {
       x: Number(nextX.toFixed(2)),
       y: Number(nextY.toFixed(2)),
@@ -580,15 +566,6 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
     }
   };
 
-  const handlePartPointerMove = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (partId !== activeDragPartIdRef.current || event.pointerId !== activePointerIdRef.current) {
-      return;
-    }
-
-    event.stopPropagation();
-    handleCanvasPointerMove(event);
-  };
-
   const commitActiveDragPosition = () => {
     const draggingPartId = activeDragPartIdRef.current;
     if (!draggingPartId) {
@@ -601,63 +578,20 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
     }
   };
 
-  const releaseCapturedPointer = () => {
-    const capturedElement = capturedElementRef.current;
-    const pointerId = activePointerIdRef.current;
-
-    if (capturedElement && pointerId !== null && capturedElement.hasPointerCapture(pointerId)) {
-      capturedElement.releasePointerCapture(pointerId);
-    }
-
-    activePointerIdRef.current = null;
+  const resetActiveDrag = () => {
     activeDragPartIdRef.current = null;
-    capturedElementRef.current = null;
     stageRectRef.current = null;
     clearPendingVisualFrame();
   };
 
-  const handleCanvasPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerId !== activePointerIdRef.current) {
+  const handlePartGestureEnd = (partId: WeaponPartId, canceled: boolean) => {
+    if (activeDragPartIdRef.current !== partId) {
       return;
     }
 
     commitActiveDragPosition();
-    releaseCapturedPointer();
-    logDragPerf("release");
-  };
-
-  const handlePartPointerUp = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (activeDragPartIdRef.current !== partId || event.pointerId !== activePointerIdRef.current) {
-      return;
-    }
-
-    event.stopPropagation();
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    commitActiveDragPosition();
-    activePointerIdRef.current = null;
-    activeDragPartIdRef.current = null;
-    capturedElementRef.current = null;
-    stageRectRef.current = null;
-    clearPendingVisualFrame();
-    logDragPerf("release");
-  };
-
-  const handlePartLostPointerCapture = (partId: WeaponPartId, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (activeDragPartIdRef.current !== partId || event.pointerId !== activePointerIdRef.current) {
-      return;
-    }
-
-    commitActiveDragPosition();
-    activePointerIdRef.current = null;
-    activeDragPartIdRef.current = null;
-    capturedElementRef.current = null;
-    stageRectRef.current = null;
-    clearPendingVisualFrame();
-    logDragPerf("cancel");
+    resetActiveDrag();
+    logDragPerf(canceled ? "cancel" : "release");
   };
 
   const handleClearWeaponLayoutAndReload = () => {
@@ -707,26 +641,16 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart
               <input type="checkbox" checked={debugMode} onChange={(event) => setDebugMode(event.target.checked)} />
               <span>Debug overlay</span>
             </label>
-            <button className="button button-cream" onClick={() => setCurrentPage("home")}>
-              Back
-            </button>
           </div>
         </header>
 
-        <section
-          ref={canvasCardRef}
-          className="layout-editor-canvas-card"
-          onPointerMove={handleCanvasPointerMove}
-          onPointerUp={handleCanvasPointerUp}
-          onPointerCancel={handleCanvasPointerUp}
-        >
+        <section ref={canvasCardRef} className="layout-editor-canvas-card">
           <WeaponCanvas
             debug={debugMode}
             layout={layout}
-            onPartLostPointerCapture={handlePartLostPointerCapture}
-            onPartPointerDown={handlePartPointerDown}
-            onPartPointerMove={handlePartPointerMove}
-            onPartPointerUp={handlePartPointerUp}
+            onPartGestureEnd={handlePartGestureEnd}
+            onPartGestureMove={handlePartGestureMove}
+            onPartGestureStart={handlePartGestureStart}
             partClassName={step === "complete" ? "is-readonly" : ""}
             selectedPartId={activePartId}
             snapTarget={

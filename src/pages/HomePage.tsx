@@ -9,8 +9,6 @@ type Props = {
   roomActionLabel?: string | null;
   roomError?: string | null;
   socketDebugText?: string | null;
-  nickname: string;
-  onNicknameChange: (value: string) => void;
 };
 
 function HomePage({
@@ -21,8 +19,6 @@ function HomePage({
   roomActionLabel = null,
   roomError = null,
   socketDebugText = null,
-  nickname,
-  onNicknameChange,
 }: Props) {
   return (
     <main className="screen screen-home screen-home-simple">
@@ -38,26 +34,13 @@ function HomePage({
               <span className="home-title-bottom">Duel</span>
             </h1>
 
-            <label className="field home-nickname-field">
-              <span className="sr-only">Nickname</span>
-              <input
-                className="input playful-input home-nickname-input"
-                value={nickname}
-                onChange={(event) => onNicknameChange(event.target.value)}
-                maxLength={24}
-                placeholder="Enter nickname (optional)"
-                autoCorrect="off"
-                spellCheck={false}
-              />
-            </label>
-
             <div className="home-simple-actions">
               <button
                 className="button button-big button-yellow home-play-button"
                 onClick={() => (onStartGame ? onStartGame() : setCurrentPage("create"))}
                 disabled={roomActionLoading}
               >
-                {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "PLAY!"}
+                {roomActionLoading ? roomActionLabel ?? "CONNECTING..." : "CREATE ROOM"}
               </button>
               <button
                 className="button button-big button-blue button-home-outline home-join-button"
