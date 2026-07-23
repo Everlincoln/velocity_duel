@@ -1253,6 +1253,7 @@ body::before {
 
 @media (orientation: landscape) and (max-height: 560px) {
   .ready-screen:has(.ready-stage.is-counting-down) {
+    height: 100dvh;
     padding:
       max(4px, env(safe-area-inset-top))
       max(10px, env(safe-area-inset-right))
@@ -1260,24 +1261,60 @@ body::before {
       max(10px, env(safe-area-inset-left));
   }
 
+  .ready-screen:has(.ready-stage.is-counting-down) .ready-shell {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
   .ready-stage.is-counting-down {
+    height: 100%;
     transform: none;
   }
 
-  .ready-tutorial {
-    min-height: calc(100dvh - 8px);
+  .ready-tutorial.is-mobile-tutorial,
+  .ready-tutorial.is-mobile-countdown {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
-  .ready-tutorial-demo {
-    min-height: min(84dvh, 360px);
+  .ready-tutorial.is-mobile-tutorial .ready-tutorial-demo {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
-  .ready-tutorial-count {
-    min-height: 190px;
+  .ready-tutorial.is-mobile-tutorial .ready-tutorial-assembly,
+  .ready-tutorial.is-mobile-tutorial .ready-tutorial-fire {
+    inset: 38px 4px 0;
   }
 
-  .ready-tutorial-canvas {
-    width: min(100%, 490px);
+  .ready-tutorial.is-mobile-tutorial .ready-tutorial-canvas {
+    width: min(86vw, 156dvh, 680px);
+  }
+
+  .ready-tutorial.is-mobile-countdown {
+    place-items: center;
+  }
+
+  .ready-tutorial.is-mobile-countdown .ready-tutorial-count {
+    width: 100%;
+    min-height: 100%;
+  }
+
+  .ready-tutorial.is-mobile-countdown .ready-tutorial-count::before {
+    width: min(54vh, 230px);
+  }
+
+  .ready-tutorial.is-mobile-countdown .ready-tutorial-number {
+    font-size: clamp(7.5rem, 38vh, 12rem);
   }
 }
 
