@@ -4,7 +4,6 @@ import type { MotionPermissionState, Page } from "../App";
 type Props = {
   motionPermission: MotionPermissionState;
   pendingGameplayPage: Page;
-  returnPage: Page;
   setCurrentPage: (page: Page) => void;
   setMotionPermission: (value: MotionPermissionState) => void;
 };
@@ -48,7 +47,6 @@ const EMPTY_SAMPLE: MotionSample = {
 function MotionSetupPage({
   motionPermission,
   pendingGameplayPage,
-  returnPage,
   setCurrentPage,
   setMotionPermission,
 }: Props) {
@@ -92,10 +90,6 @@ function MotionSetupPage({
       window.removeEventListener("devicemotion", handleMotion);
     };
   }, [listenerActive]);
-
-  const handleBack = () => {
-    setCurrentPage(returnPage);
-  };
 
   const handleContinueWithoutMotion = () => {
     setMotionPermission("unavailable");
@@ -163,9 +157,6 @@ function MotionSetupPage({
                 Continue Without Motion
               </button>
             ) : null}
-            <button className="button button-cream" onClick={handleBack}>
-              Back
-            </button>
           </div>
 
           {permissionResult ? (

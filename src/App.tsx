@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import HomePage from "./pages/HomePage";
 import CreateRoomPage from "./pages/CreateRoomPage";
@@ -11,6 +11,7 @@ import FirePhasePage from "./pages/FirePhasePage";
 import ResultPage from "./pages/ResultPage";
 import WeaponLayoutEditor from "./pages/WeaponLayoutEditor";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
+import GameNavigation from "./components/GameNavigation";
 import { getSocket } from "./lib/socket";
 import { unlockGameAudio } from "./lib/gameAudio";
 import { clearActiveInputFocus, requestGamePresentation } from "./lib/gamePresentation";
@@ -154,7 +155,6 @@ function App() {
   const [assemblyStartTimestamp, setAssemblyStartTimestamp] = useState<number | null>(null);
   const [motionPermission, setMotionPermission] = useState<MotionPermissionState>("unknown");
   const [pendingGameplayPage] = useState<Page>("ready");
-  const [motionReturnPage] = useState<Page>("home");
   const [roomPlayers, setRoomPlayers] = useState<RoomPlayer[]>([]);
   const [currentPlayerNumber, setCurrentPlayerNumber] = useState<1 | 2 | null>(null);
   const [duelResult, setDuelResult] = useState<DuelResult | null>(null);
@@ -165,7 +165,7 @@ function App() {
   const [socketDebugInfo, setSocketDebugInfo] = useState<SocketDebugInfo | null>(null);
   const [weaponAssetsReady, setWeaponAssetsReady] = useState(false);
   const [gameplayAssetsLoading, setGameplayAssetsLoading] = useState(false);
-  const [nicknameInput, setNicknameInput] = useState("");
+  const [nicknameInput] = useState("");
   const [sessionNickname, setSessionNickname] = useState("");
   const [fallbackOpponentNickname] = useState(() => generateFunNickname());
   const [viewport, setViewport] = useState(() => ({
@@ -173,12 +173,31 @@ function App() {
     height: typeof window === "undefined" ? 720 : window.innerHeight,
   }));
   const socket = useMemo(() => getSocket(), []);
+  const currentPageRef = useRef<Page>("home");
+  const pageHistoryRef = useRef<Page[]>([]);
+  const roomActionAttemptRef = useRef(0);
   const weaponAssetsPromiseRef = useRef<Promise<void> | null>(null);
   const isDev = import.meta.env.DEV;
   const isPortrait = viewport.height > viewport.width;
   const isMobileSized = Math.min(viewport.width, viewport.height) < 900;
   const showRotateOverlay = isPortrait && isMobileSized;
   const useSocketReadyFlow = socketAvailable && currentPlayerNumber !== null && roomPlayers.length > 0;
+
+  const navigateTo = useCallback((page: Page) => {
+    const current = currentPageRef.current;
+    if (page === current) {
+      return;
+    }
+
+    pageHistoryRef.current.push(current);
+    currentPageRef.current = page;
+    setCurrentPage(page);
+  }, []);
+
+  const replaceCurrentPage = useCallback((page: Page) => {
+    currentPageRef.current = page;
+    setCurrentPage(page);
+  }, []);
 
   const buildSocketDebugInfo = (
     action: SocketDebugInfo["action"],
@@ -366,6 +385,7 @@ function App() {
   };
 
   const handleCreateRoom = async () => {
+    const attemptId = ++roomActionAttemptRef.current;
     clearActiveInputFocus();
     unlockGameAudio();
     void requestGamePresentation();
@@ -380,6 +400,10 @@ function App() {
     setRoomActionLabel("Connecting...");
 
     const connectionResult = await ensureSocketConnection();
+    if (attemptId !== roomActionAttemptRef.current) {
+      return;
+    }
+
     if (!connectionResult.connected) {
       console.log("[socket] createRoom connection failed", nextRoomCode);
       publishSocketDebug(
@@ -394,7 +418,7 @@ function App() {
       setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
       setRoomActionLoading(false);
       setRoomActionLabel(null);
-      setCurrentPage("home");
+      navigateTo("home");
       return;
     }
 
@@ -406,6 +430,13 @@ function App() {
       { roomCode: nextRoomCode, nickname },
       (result: { ok: boolean; error?: string; room?: RoomStatePayload; playerNumber?: 1 | 2 }) => {
         console.log("[socket] createRoom result", result);
+        if (attemptId !== roomActionAttemptRef.current) {
+          if (result?.ok && socket.connected) {
+            socket.emit("leaveRoom", { roomCode: nextRoomCode });
+          }
+          return;
+        }
+
         publishSocketDebug(
           buildSocketDebugInfo("createRoom", "emit-callback", {
             roomCode: nextRoomCode,
@@ -423,7 +454,7 @@ function App() {
         setRoomCode(result.room.roomCode);
         setCurrentPlayerNumber(result.playerNumber);
         setRoomPlayers(result.room.players);
-        setCurrentPage("ready");
+        navigateTo("ready");
       },
     );
   };
@@ -446,12 +477,18 @@ function App() {
       return;
     }
 
+    const attemptId = ++roomActionAttemptRef.current;
+
     setRoomError(null);
     setRoomActionLoading(true);
     setRoomActionLabel("Connecting...");
     setRoomCode(trimmedRoomCode);
 
     const connectionResult = await ensureSocketConnection();
+    if (attemptId !== roomActionAttemptRef.current) {
+      return;
+    }
+
     if (!connectionResult.connected) {
       console.log("[socket] joinRoom connection failed", trimmedRoomCode);
       publishSocketDebug(
@@ -466,7 +503,7 @@ function App() {
       setRoomError("Cannot connect to multiplayer server. Please start the server and try again.");
       setRoomActionLoading(false);
       setRoomActionLabel(null);
-      setCurrentPage("join");
+      navigateTo("join");
       return;
     }
 
@@ -478,6 +515,13 @@ function App() {
       { roomCode: trimmedRoomCode, nickname },
       (result: { ok: boolean; error?: string; room?: RoomStatePayload; playerNumber?: 1 | 2 }) => {
         console.log("[socket] joinRoom result", result);
+        if (attemptId !== roomActionAttemptRef.current) {
+          if (result?.ok && socket.connected) {
+            socket.emit("leaveRoom", { roomCode: trimmedRoomCode });
+          }
+          return;
+        }
+
         publishSocketDebug(
           buildSocketDebugInfo("joinRoom", "emit-callback", {
             roomCode: trimmedRoomCode,
@@ -501,7 +545,7 @@ function App() {
         setRoomCode(result.room.roomCode);
         setCurrentPlayerNumber(result.playerNumber);
         setRoomPlayers(result.room.players);
-        setCurrentPage("ready");
+        navigateTo("ready");
       },
     );
   };
@@ -526,7 +570,8 @@ function App() {
     );
   };
 
-  const handleLeaveRoom = () => {
+  const leaveRoomAndNavigate = (destination: Page, clearHistory: boolean) => {
+    roomActionAttemptRef.current += 1;
     if (socket.connected && currentPlayerNumber) {
       socket.emit("leaveRoom", { roomCode }, (result: { ok: boolean }) => {
         console.log("[socket] leaveRoom", result);
@@ -535,7 +580,35 @@ function App() {
 
     resetRoomSession();
     setRoomCode(generateRoomCode());
-    setCurrentPage("home");
+    if (clearHistory) {
+      pageHistoryRef.current = [];
+    }
+    replaceCurrentPage(destination);
+  };
+
+  const handleLeaveRoom = () => {
+    leaveRoomAndNavigate("home", true);
+  };
+
+  const handleBackNavigation = () => {
+    const destination = pageHistoryRef.current.pop() ?? "home";
+    const isLeavingRoomFlow =
+      currentPlayerNumber !== null && (destination === "home" || destination === "create" || destination === "join");
+
+    if (destination === "home" || isLeavingRoomFlow) {
+      leaveRoomAndNavigate(destination, destination === "home");
+      return;
+    }
+
+    if (destination === "ready" && socket.connected && currentPlayerNumber) {
+      socket.emit("playerReady", { roomCode, ready: false }, (result: { ok: boolean; error?: string }) => {
+        if (!result?.ok) {
+          setRoomError(result?.error || "Unable to return to the room.");
+        }
+      });
+    }
+
+    replaceCurrentPage(destination);
   };
 
   const handlePlayAgain = async () => {
@@ -554,7 +627,7 @@ function App() {
           }
         },
       );
-      setCurrentPage("ready");
+      navigateTo("ready");
       return;
     }
 
@@ -564,7 +637,7 @@ function App() {
     } finally {
       setGameplayAssetsLoading(false);
     }
-    setCurrentPage("assembly");
+    navigateTo("assembly");
   };
 
   useEffect(() => {
@@ -634,7 +707,7 @@ function App() {
       setGameplayAssetsLoading(true);
       void ensureWeaponAssetsReady().finally(() => {
         setGameplayAssetsLoading(false);
-        setCurrentPage("assembly");
+        navigateTo("assembly");
       });
     };
 
@@ -662,7 +735,7 @@ function App() {
         multiplayer: true,
       });
       setReactionTimeMs(playerCompletionTimeMs);
-      setCurrentPage("result");
+      navigateTo("result");
     };
 
     socket.on("connect", handleConnect);
@@ -707,11 +780,15 @@ function App() {
         </div>
       ) : (
         <>
+          {currentPage !== "home" ? (
+            <GameNavigation onBack={handleBackNavigation} onHome={handleLeaveRoom} />
+          ) : null}
+
           {isDev && currentPage !== "layout-editor" ? (
             <button
               className="dev-layout-toggle"
               aria-label="Open weapon layout editor"
-              onClick={() => setCurrentPage("layout-editor")}
+              onClick={() => navigateTo("layout-editor")}
             >
               Open Layout Editor
             </button>
@@ -719,21 +796,19 @@ function App() {
 
           {currentPage === "home" && (
             <HomePage
-              setCurrentPage={setCurrentPage}
+              setCurrentPage={navigateTo}
               onStartGame={handleCreateRoom}
               isDev={isDev}
               socketDebugText={socketDebugText}
               roomActionLoading={roomActionLoading}
               roomActionLabel={roomActionLabel}
               roomError={roomError}
-              nickname={nicknameInput}
-              onNicknameChange={setNicknameInput}
             />
           )}
           {currentPage === "create" && (
             <CreateRoomPage
               roomCode={roomCode}
-              startGame={setCurrentPage}
+              startGame={navigateTo}
               onCreateRoom={handleCreateRoom}
               roomActionLoading={roomActionLoading}
               roomError={roomError}
@@ -742,7 +817,7 @@ function App() {
           {currentPage === "join" && (
             <JoinRoomPage
               roomCode={roomCode}
-              startGame={setCurrentPage}
+              startGame={navigateTo}
               onJoinRoom={handleJoinRoom}
               isDev={isDev}
               socketDebugText={socketDebugText}
@@ -755,20 +830,18 @@ function App() {
             <MotionSetupPage
               motionPermission={motionPermission}
               pendingGameplayPage={pendingGameplayPage}
-              returnPage={motionReturnPage}
-              setCurrentPage={setCurrentPage}
+              setCurrentPage={navigateTo}
               setMotionPermission={setMotionPermission}
             />
           )}
           {currentPage === "ready" && (
             <ReadyRoomPage
               roomCode={roomCode}
-              setCurrentPage={setCurrentPage}
+              setCurrentPage={navigateTo}
               useSocketFlow={useSocketReadyFlow}
               currentPlayerNumber={currentPlayerNumber}
               roomPlayers={roomPlayers}
               onToggleReady={handleSocketReadyToggle}
-              onLeaveRoom={handleLeaveRoom}
               motionPermission={motionPermission}
               setMotionPermission={setMotionPermission}
               fallbackCurrentNickname={sessionNickname || normalizeNicknameInput(nicknameInput) || "Rocket Duck"}
@@ -778,31 +851,30 @@ function App() {
           )}
           {currentPage === "assembly" && (
             <WeaponAssemblyPage
-              setCurrentPage={setCurrentPage}
+              setCurrentPage={navigateTo}
               setReactionTimeMs={setReactionTimeMs}
               onAssemblyStart={setAssemblyStartTimestamp}
             />
           )}
-          {currentPage === "weapon-ready" && <WeaponReadyPage setCurrentPage={setCurrentPage} />}
+          {currentPage === "weapon-ready" && <WeaponReadyPage setCurrentPage={navigateTo} />}
           {currentPage === "fire" && (
             <FirePhasePage
               motionPermission={motionPermission}
               roomCode={roomCode}
               useSocketFlow={useSocketReadyFlow}
               assemblyStartTimestamp={assemblyStartTimestamp}
-              setCurrentPage={setCurrentPage}
+              setCurrentPage={navigateTo}
               setReactionTimeMs={setReactionTimeMs}
             />
           )}
           {currentPage === "result" && (
             <ResultPage
               duelResult={duelResult}
-              onBackHome={handleLeaveRoom}
               onPlayAgain={handlePlayAgain}
               reactionTimeMs={reactionTimeMs}
             />
           )}
-          {isDev && currentPage === "layout-editor" && <WeaponLayoutEditor setCurrentPage={setCurrentPage} />}
+          {isDev && currentPage === "layout-editor" && <WeaponLayoutEditor />}
         </>
       )}
     </div>

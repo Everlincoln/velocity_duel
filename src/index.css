@@ -294,26 +294,19 @@ body::before {
   box-shadow: 0 10px 24px rgba(88, 154, 220, 0.18);
 }
 
-.home-simple-actions .home-play-button {
-
-  min-height: 59px;     /* 原来 62px */
-
-  font-size: 1.28rem;   /* 原来 1.34rem */
-
-  font-weight: 950;
-
-  letter-spacing: 0.055em;
-
+.home-simple-actions .home-play-button,
+.home-simple-actions .home-join-button {
+  min-height: 56px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  border: 3px solid #ffffff;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
 }
 
 .home-simple-actions .home-join-button {
-
-  min-height: 54px;     /* 原来 56px */
-
-  font-size: 1.15rem;   /* 原来 1.08rem */
-
-  font-weight: 850;
-
+  color: #ffffff;
 }
 
 .sr-only {
@@ -817,6 +810,7 @@ body::before {
 
 .join-minimal-card {
   width: min(100%, 560px);
+  max-width: 560px;
   display: grid;
   justify-items: center;
   align-content: center;
@@ -824,17 +818,69 @@ body::before {
   gap: 28px;
 }
 
-.join-room-field {
+.join-room-code-display {
   width: min(100%, 420px);
-  margin: 0;
   display: grid;
-  justify-items: center;
+  place-items: center;
+  min-height: 68px;
+  padding: 10px 18px;
+  border: 3px solid #486b9d;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1d4e86;
+  box-shadow: 0 7px 0 rgba(66, 101, 151, 0.16);
+  font-size: clamp(1.55rem, 6vw, 2.35rem);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
 }
 
-.join-room-input {
-  width: 100%;
-  text-align: center;
-  letter-spacing: 0.18em;
+.join-room-code-display.is-empty {
+  color: #86a0c0;
+  font-size: clamp(1.05rem, 4vw, 1.35rem);
+  letter-spacing: 0.12em;
+}
+
+.join-room-keyboard {
+  width: min(100%, 560px);
+}
+
+.join-room-keyboard .simple-keyboard {
+  padding: 10px;
+  border: 2px solid rgba(55, 87, 132, 0.22);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: 0 12px 28px rgba(61, 113, 173, 0.12);
+}
+
+.join-room-keyboard .hg-row {
+  justify-content: center;
+}
+
+.join-room-keyboard .hg-button {
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #28588f;
+  box-shadow: 0 3px 0 rgba(51, 85, 128, 0.18);
+  font-family: inherit;
+  font-size: clamp(0.78rem, 2.5vw, 1rem);
+  font-weight: 900;
+}
+
+.join-room-keyboard .hg-button:active,
+.join-room-keyboard .hg-button.hg-activeButton {
+  transform: translateY(2px);
+  background: #dceeff;
+  box-shadow: 0 1px 0 rgba(51, 85, 128, 0.18);
+}
+
+.join-room-keyboard .room-key-action {
+  flex-grow: 1.7;
+  background: #ffe7c2;
+  color: #9a5b23;
 }
 
 .join-room-message {
@@ -900,6 +946,46 @@ body::before {
 
 .join-room-actions .button {
   width: min(100%, 220px);
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .minimal-card.join-minimal-card {
+    width: min(100%, 760px);
+    max-width: min(96vw, 760px);
+    grid-template-columns: minmax(150px, 0.65fr) minmax(320px, 1.35fr);
+    gap: 10px 14px;
+  }
+
+  .join-minimal-card .center-title,
+  .join-room-code-display,
+  .join-room-actions,
+  .join-room-message,
+  .socket-debug-details {
+    grid-column: 1;
+  }
+
+  .join-minimal-card .center-title {
+    font-size: clamp(1.6rem, 4vw, 2.5rem);
+  }
+
+  .join-room-code-display {
+    min-height: 56px;
+    font-size: clamp(1.25rem, 4vw, 1.8rem);
+  }
+
+  .join-room-keyboard {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: center;
+  }
+
+  .join-room-keyboard .hg-button {
+    height: 38px;
+  }
+
+  .join-room-actions {
+    margin-top: 0;
+  }
 }
 
 .weapon-mini-screen {
@@ -2244,9 +2330,9 @@ body::before {
   color: #ffffff;
   font-size: 1.5rem;
   font-weight: 800;
-  -webkit-text-stroke: 1.8px var(--outline);
+  -webkit-text-stroke: 0;
   letter-spacing: 0.04em;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-shadow: none;
 }
 
 .button-coral {
@@ -3133,14 +3219,10 @@ body::before {
     font-size: 1.08rem;
   }
 
-  .screen-home .home-play-button {
-    min-height: 56px;
-    font-size: 1.28rem;
-  }
-
+  .screen-home .home-play-button,
   .screen-home .home-join-button {
-    min-height: 44px;
-    font-size: 0.9rem;
+    min-height: 54px;
+    font-size: 1.05rem;
   }
 
   .weapon-mini-screen {

@@ -2,12 +2,11 @@ import type { DuelResult } from "../App";
 
 type Props = {
   duelResult: DuelResult | null;
-  onBackHome: () => void;
   onPlayAgain: () => void;
   reactionTimeMs: number | null;
 };
 
-function ResultPage({ duelResult, onBackHome, onPlayAgain, reactionTimeMs }: Props) {
+function ResultPage({ duelResult, onPlayAgain, reactionTimeMs }: Props) {
   const didWin = duelResult ? duelResult.outcome === "win" : true;
   const title = didWin ? "YOU WIN" : "YOU LOSE";
   const playerCompletionTime = duelResult?.playerCompletionTimeMs ?? reactionTimeMs;
@@ -26,9 +25,6 @@ function ResultPage({ duelResult, onBackHome, onPlayAgain, reactionTimeMs }: Pro
           <div className="duel-result-actions">
             <button className="button button-yellow" onClick={onPlayAgain}>
               PLAY AGAIN
-            </button>
-            <button className="button button-blue" onClick={onBackHome}>
-              BACK HOME
             </button>
           </div>
         </article>

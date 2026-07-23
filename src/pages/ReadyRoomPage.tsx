@@ -11,7 +11,6 @@ type Props = {
   currentPlayerNumber?: 1 | 2 | null;
   roomPlayers?: RoomPlayer[];
   onToggleReady?: () => void;
-  onLeaveRoom?: () => void;
   motionPermission: MotionPermissionState;
   setMotionPermission: (value: MotionPermissionState) => void;
   fallbackCurrentNickname?: string;
@@ -44,7 +43,6 @@ function ReadyRoomPage({
   currentPlayerNumber = null,
   roomPlayers = [],
   onToggleReady,
-  onLeaveRoom,
   motionPermission,
   setMotionPermission,
   fallbackCurrentNickname = "Rocket Duck",
@@ -340,11 +338,6 @@ function ReadyRoomPage({
           {permissionMessage ? <p className="section-text ready-permission-message">{permissionMessage}</p> : null}
           {isPreparingMatch ? <p className="section-text ready-permission-message">Loading the duel gear...</p> : null}
 
-          <div className="ready-controls">
-            <button className="ready-control-button" onClick={() => (onLeaveRoom ? onLeaveRoom() : setCurrentPage("home"))}>
-              Exit
-            </button>
-          </div>
         </article>
       </section>
     </main>

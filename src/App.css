@@ -2,6 +2,51 @@
   min-height: 100vh;
 }
 
+.game-navigation {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 80;
+  display: flex;
+  gap: 8px;
+}
+
+.game-navigation-button {
+  min-width: 78px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 2px solid #385170;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #244d7b;
+  box-shadow: 0 4px 0 rgba(45, 72, 106, 0.18);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-navigation-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(45, 72, 106, 0.18);
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .game-navigation-button {
+    min-width: 68px;
+    min-height: 36px;
+    padding: 6px 9px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+  }
+}
+
 .rotate-overlay {
   position: fixed;
   inset: 0;

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { Page } from "../App";
 import WeaponCanvas from "../components/WeaponCanvas";
 import {
   DEFAULT_WEAPON_LAYOUT,
@@ -14,10 +13,6 @@ import {
   type WeaponPartId,
 } from "../components/weaponCanvasConfig";
 
-type Props = {
-  setCurrentPage: (page: Page) => void;
-};
-
 type EditorDebugInfo = {
   canvasWidth: number;
   canvasHeight: number;
@@ -27,7 +22,7 @@ type EditorDebugInfo = {
   scaleY: number;
 };
 
-function WeaponLayoutEditor({ setCurrentPage }: Props) {
+function WeaponLayoutEditor() {
   const [selectedPartId, setSelectedPartId] = useState<WeaponPartId>("weaponMagazine");
   const [ghostMode, setGhostMode] = useState(false);
   const [debugMode, setDebugMode] = useState(true);
@@ -310,9 +305,6 @@ function WeaponLayoutEditor({ setCurrentPage }: Props) {
               <span>Test mode</span>
             </label>
 
-            <button className="button button-cream" onClick={() => setCurrentPage("home")}>
-              Back
-            </button>
             <button className="button button-cream" onClick={resetLayout}>
               Reset
             </button>
