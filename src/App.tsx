@@ -707,7 +707,6 @@ function App() {
       setGameplayAssetsLoading(true);
       void ensureWeaponAssetsReady().finally(() => {
         setGameplayAssetsLoading(false);
-        navigateTo("assembly");
       });
     };
 

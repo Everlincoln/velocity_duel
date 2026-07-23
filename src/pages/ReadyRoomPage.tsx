@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MotionPermissionState, Page, RoomPlayer } from "../App";
+import WeaponCanvas from "../components/WeaponCanvas";
+import { DEFAULT_WEAPON_LAYOUT } from "../components/weaponCanvasConfig";
 import player1 from "../assets/characters/player1.png";
 import player2 from "../assets/characters/player2.png";
 import { unlockGameAudio } from "../lib/gameAudio";
@@ -54,6 +56,7 @@ function ReadyRoomPage({
   const [countdown, setCountdown] = useState<number | null>(null);
   const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<"idle" | "copied" | "failed">("idle");
+  const socketCountdownStartedRef = useRef(false);
   const isTouchDevice =
     typeof window !== "undefined" &&
     (navigator.maxTouchPoints > 0 || window.matchMedia?.("(pointer: coarse)").matches === true);
@@ -151,15 +154,34 @@ function ReadyRoomPage({
   };
 
   useEffect(() => {
-    if (useSocketFlow) {
+    if (!useSocketFlow) {
       return;
     }
 
+    const bothPlayersReady = Boolean(socketPlayer1?.ready && socketPlayer2?.ready);
+
+    if (bothPlayersReady && !socketCountdownStartedRef.current) {
+      socketCountdownStartedRef.current = true;
+      const timer = window.setTimeout(() => setCountdown(3), 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (!bothPlayersReady) {
+      socketCountdownStartedRef.current = false;
+      const timer = window.setTimeout(() => setCountdown(null), 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [socketPlayer1?.ready, socketPlayer2?.ready, useSocketFlow]);
+
+  useEffect(() => {
     if (countdown === null) {
       return;
     }
 
     if (countdown === 0) {
+      if (isPreparingMatch) {
+        return;
+      }
       setCurrentPage("assembly");
       return;
     }
@@ -169,7 +191,7 @@ function ReadyRoomPage({
     }, 1000);
 
     return () => window.clearTimeout(timer);
-  }, [countdown, setCurrentPage, useSocketFlow]);
+  }, [countdown, isPreparingMatch, setCurrentPage]);
 
   useEffect(() => {
     if (copyFeedback === "idle") {
@@ -185,7 +207,7 @@ function ReadyRoomPage({
 
   const displayPlayer1Ready = useSocketFlow ? (socketPlayer1?.ready ?? false) : player1Ready;
   const displayPlayer2Ready = useSocketFlow ? (socketPlayer2?.ready ?? false) : player2Ready;
-  const displayCountdown = useSocketFlow ? null : countdown;
+  const displayCountdown = countdown;
   const player1IsCurrent = !useSocketFlow || currentPlayerNumber === 1;
   const player2IsCurrent = !useSocketFlow || currentPlayerNumber === 2;
   const player1Present = useSocketFlow ? Boolean(socketPlayer1) : true;
@@ -286,57 +308,108 @@ function ReadyRoomPage({
           <span className="ready-splash splash-right" />
         </div>
 
-        <article className="ready-stage">
-          <div className="ready-room-code">
-            <div className="ready-room-code-copy">
-              <div className="ready-room-code-text">
-                <span className="ready-room-code-label">ROOM CODE</span>
-                <strong className="ready-room-code-value">{roomCode}</strong>
+        <article className={`ready-stage ${displayCountdown !== null ? "is-counting-down" : ""}`}>
+          {displayCountdown !== null ? (
+            <div className="ready-tutorial" role="status" aria-live="assertive">
+              <div className="ready-tutorial-count">
+                <span className="ready-tutorial-eyebrow">GET READY</span>
+                <span key={displayCountdown} className="ready-tutorial-number">
+                  {displayCountdown > 0 ? displayCountdown : "GO"}
+                </span>
               </div>
-              <button type="button" className="ready-copy-button" onClick={handleCopyRoomCode}>
-                {copyFeedback === "copied" ? "COPIED" : "COPY"}
-              </button>
+
+              <div className="ready-tutorial-demo" aria-hidden="true">
+                <div className="ready-tutorial-steps">
+                  <div className="ready-tutorial-step ready-tutorial-step-assemble">
+                    <span className="ready-tutorial-step-icon">✦</span>
+                    <span>ASSEMBLE</span>
+                  </div>
+                  <span className="ready-tutorial-step-arrow">›</span>
+                  <div className="ready-tutorial-step ready-tutorial-step-fire">
+                    <span className="ready-tutorial-step-icon ready-tutorial-phone-icon" />
+                    <span>SHAKE TO FIRE</span>
+                  </div>
+                </div>
+
+                <div className="ready-tutorial-assembly">
+                  <div className="ready-tutorial-canvas">
+                    <WeaponCanvas
+                      layout={DEFAULT_WEAPON_LAYOUT}
+                      partClassName="ready-tutorial-weapon-part"
+                      showLabels={false}
+                    />
+                  </div>
+                  <span className="ready-tutorial-snap ready-tutorial-snap-magazine">✦</span>
+                  <span className="ready-tutorial-snap ready-tutorial-snap-slide">✦</span>
+                </div>
+
+                <div className="ready-tutorial-fire">
+                  <span className="ready-tutorial-motion ready-tutorial-motion-left" />
+                  <div className="ready-tutorial-phone">
+                    <span className="ready-tutorial-speaker" />
+                    <span className="ready-tutorial-phone-screen">
+                      <span className="ready-tutorial-mini-gun" />
+                    </span>
+                  </div>
+                  <span className="ready-tutorial-motion ready-tutorial-motion-right" />
+                  <span className="ready-tutorial-muzzle-flash">✦</span>
+                  <span className="ready-tutorial-fire-ring" />
+                </div>
+              </div>
+
+              <p className="visually-hidden">Assemble the weapon, then shake your phone to fire.</p>
             </div>
-            {copyFeedback === "failed" ? <span className="ready-copy-feedback">Copy unavailable</span> : null}
-          </div>
-
-          <h1 className="ready-title">READY?</h1>
-
-          <div className="ready-lineup">
-            <div className="ready-player">
-              <div className="ready-avatar ready-avatar-blue">
-                <img src={player1} alt="Player 1 avatar" className="ready-avatar-image" />
+          ) : (
+            <>
+              <div className="ready-room-code">
+                <div className="ready-room-code-copy">
+                  <div className="ready-room-code-text">
+                    <span className="ready-room-code-label">ROOM CODE</span>
+                    <strong className="ready-room-code-value">{roomCode}</strong>
+                  </div>
+                  <button type="button" className="ready-copy-button" onClick={handleCopyRoomCode}>
+                    {copyFeedback === "copied" ? "COPIED" : "COPY"}
+                  </button>
+                </div>
+                {copyFeedback === "failed" ? <span className="ready-copy-feedback">Copy unavailable</span> : null}
               </div>
-              <div className="ready-label ready-label-blue">
-                {player1Name}
-                {player1IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
-              </div>
-              {renderPlayerAction(player1IsCurrent, player1Present, displayPlayer1Ready, handlePlayer1Toggle)}
-            </div>
 
-            <div className={`ready-count-zone ${displayCountdown === null ? "ready-count-hidden" : ""}`}>
-              {displayCountdown !== null && (
-                <>
-                  <div className="ready-count-glow" aria-hidden="true" />
-                  <div className="ready-count-number">{displayCountdown}</div>
-                </>
-              )}
-            </div>
+              <h1 className="ready-title">READY?</h1>
 
-            <div className="ready-player">
-              <div className="ready-avatar ready-avatar-pink">
-                <img src={player2} alt="Player 2 avatar" className="ready-avatar-image ready-avatar-image-player2" />
-              </div>
-              <div className="ready-label ready-label-red">
-                {player2Name}
-                {player2IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
-              </div>
-              {renderPlayerAction(player2IsCurrent, player2Present, displayPlayer2Ready, handlePlayer2Toggle)}
-            </div>
-          </div>
+              <div className="ready-lineup">
+                <div className="ready-player">
+                  <div className="ready-avatar ready-avatar-blue">
+                    <img src={player1} alt="Player 1 avatar" className="ready-avatar-image" />
+                  </div>
+                  <div className="ready-label ready-label-blue">
+                    {player1Name}
+                    {player1IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
+                  </div>
+                  {renderPlayerAction(player1IsCurrent, player1Present, displayPlayer1Ready, handlePlayer1Toggle)}
+                </div>
 
-          {permissionMessage ? <p className="section-text ready-permission-message">{permissionMessage}</p> : null}
-          {isPreparingMatch ? <p className="section-text ready-permission-message">Loading the duel gear...</p> : null}
+                <div className="ready-count-zone ready-count-hidden" />
+
+                <div className="ready-player">
+                  <div className="ready-avatar ready-avatar-pink">
+                    <img
+                      src={player2}
+                      alt="Player 2 avatar"
+                      className="ready-avatar-image ready-avatar-image-player2"
+                    />
+                  </div>
+                  <div className="ready-label ready-label-red">
+                    {player2Name}
+                    {player2IsCurrent ? <span className="ready-you-label">(YOU)</span> : null}
+                  </div>
+                  {renderPlayerAction(player2IsCurrent, player2Present, displayPlayer2Ready, handlePlayer2Toggle)}
+                </div>
+              </div>
+
+              {permissionMessage ? <p className="section-text ready-permission-message">{permissionMessage}</p> : null}
+              {isPreparingMatch ? <p className="section-text ready-permission-message">Loading the duel gear...</p> : null}
+            </>
+          )}
 
         </article>
       </section>
