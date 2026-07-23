@@ -23,6 +23,7 @@ import {
 type Props = {
   setCurrentPage: (page: Page) => void;
   setReactionTimeMs: (value: number | null) => void;
+  onAssemblyStart: (timestamp: number) => void;
 };
 
 type AssemblyStep = "magazine" | "slide" | "complete";
@@ -114,7 +115,8 @@ function buildGameplayLayout(
   };
 }
 
-function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
+function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs, onAssemblyStart }: Props) {
+  const [assemblyStartTimestamp] = useState(() => performance.now());
   const [debugMode, setDebugMode] = useState(SHOW_ASSEMBLY_DEBUG);
   const [layoutResolution] = useState(() => resolveWeaponLayout());
   const [targetLayout] = useState(() => layoutResolution.layout);
@@ -164,6 +166,10 @@ function WeaponAssemblyPage({ setCurrentPage, setReactionTimeMs }: Props) {
     }
     return ["weaponFrame", "weaponMagazine", "weaponSlide"] as WeaponPartId[];
   }, [step]);
+
+  useEffect(() => {
+    onAssemblyStart(assemblyStartTimestamp);
+  }, [assemblyStartTimestamp, onAssemblyStart]);
 
   useEffect(() => {
     if (!debugMode) {

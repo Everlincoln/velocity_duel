@@ -10,7 +10,8 @@ type Props = {
 function ResultPage({ duelResult, onBackHome, onPlayAgain, reactionTimeMs }: Props) {
   const didWin = duelResult ? duelResult.outcome === "win" : true;
   const title = didWin ? "YOU WIN" : "YOU LOSE";
-  const time = duelResult?.reactionTimeMs ?? reactionTimeMs;
+  const playerCompletionTime = duelResult?.playerCompletionTimeMs ?? reactionTimeMs;
+  const time = didWin ? playerCompletionTime : playerCompletionTime ?? duelResult?.winnerCompletionTimeMs ?? null;
   const message = didWin
     ? `You eliminated your opponent in ${time ?? "--"} ms.`
     : `You were eliminated in ${time ?? "--"} ms.`;

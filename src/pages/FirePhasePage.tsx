@@ -10,13 +10,21 @@ type Props = {
   motionPermission: MotionPermissionState;
   roomCode: string;
   useSocketFlow?: boolean;
+  assemblyStartTimestamp: number | null;
   setCurrentPage: (page: Page) => void;
   setReactionTimeMs: (value: number | null) => void;
 };
 
 const SHAKE_THRESHOLD = 12;
 
-function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setCurrentPage, setReactionTimeMs }: Props) {
+function FirePhasePage({
+  motionPermission,
+  roomCode,
+  useSocketFlow = false,
+  assemblyStartTimestamp,
+  setCurrentPage,
+  setReactionTimeMs,
+}: Props) {
   const layout = useMemo(() => readSavedWeaponLayout(), []);
   const socket = useMemo(() => getSocket(), []);
   const [isFired, setIsFired] = useState(false);
@@ -24,7 +32,6 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
   const [showFlash, setShowFlash] = useState(false);
   const [showShake, setShowShake] = useState(false);
   const [reactionMs, setReactionMs] = useState<number | null>(null);
-  const startTimeRef = useRef<number>(0);
   const hasFiredRef = useRef(false);
   const isArmedRef = useRef(false);
   const hasBaselineRef = useRef(false);
@@ -46,7 +53,6 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
     setShowFlash(false);
     setShowShake(false);
     setReactionMs(null);
-    startTimeRef.current = performance.now();
     hasFiredRef.current = false;
     isArmedRef.current = true;
     hasBaselineRef.current = false;
@@ -74,8 +80,19 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
         return;
       }
 
-      const elapsed = Math.max(1, Math.round(performance.now() - startTimeRef.current));
-      console.log("[FirePhase] fire triggered", { source, elapsedMs: elapsed });
+      if (assemblyStartTimestamp === null) {
+        console.error("[FirePhase] missing assembly start timestamp");
+        return;
+      }
+
+      const fireTimestamp = performance.now();
+      const elapsed = Math.round(fireTimestamp - assemblyStartTimestamp);
+      console.log("[FirePhase] fire triggered", {
+        source,
+        assemblyStartTimestamp,
+        fireTimestamp,
+        totalCompletionMs: elapsed,
+      });
       hasFiredRef.current = true;
       setIsFired(true);
       setReactionMs(elapsed);
@@ -151,7 +168,7 @@ function FirePhasePage({ motionPermission, roomCode, useSocketFlow = false, setC
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("devicemotion", handleMotion);
     };
-  }, [motionPermission, roomCode, setCurrentPage, setReactionTimeMs, socket, useSocketFlow]);
+  }, [assemblyStartTimestamp, motionPermission, roomCode, setCurrentPage, setReactionTimeMs, socket, useSocketFlow]);
 
   return (
     <main

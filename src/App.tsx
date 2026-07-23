@@ -45,7 +45,8 @@ export type RoomPlayer = {
 
 export type DuelResult = {
   outcome: "win" | "lose";
-  reactionTimeMs: number | null;
+  playerCompletionTimeMs: number | null;
+  winnerCompletionTimeMs: number | null;
   multiplayer: boolean;
 };
 
@@ -150,6 +151,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [roomCode, setRoomCode] = useState(generateRoomCode());
   const [reactionTimeMs, setReactionTimeMs] = useState<number | null>(null);
+  const [assemblyStartTimestamp, setAssemblyStartTimestamp] = useState<number | null>(null);
   const [motionPermission, setMotionPermission] = useState<MotionPermissionState>("unknown");
   const [pendingGameplayPage] = useState<Page>("ready");
   const [motionReturnPage] = useState<Page>("home");
@@ -256,6 +258,7 @@ function App() {
     setCurrentPlayerNumber(null);
     setDuelResult(null);
     setReactionTimeMs(null);
+    setAssemblyStartTimestamp(null);
     setRoomError(null);
     setRoomActionLoading(false);
     setRoomActionLabel(null);
@@ -371,6 +374,7 @@ function App() {
     setRoomCode(nextRoomCode);
     setDuelResult(null);
     setReactionTimeMs(null);
+    setAssemblyStartTimestamp(null);
     setRoomError(null);
     setRoomActionLoading(true);
     setRoomActionLabel("Connecting...");
@@ -433,6 +437,7 @@ function App() {
     const nickname = resolveSessionNickname();
     setDuelResult(null);
     setReactionTimeMs(null);
+    setAssemblyStartTimestamp(null);
 
     if (validationError) {
       setRoomError(validationError);
@@ -536,6 +541,7 @@ function App() {
   const handlePlayAgain = async () => {
     setDuelResult(null);
     setReactionTimeMs(null);
+    setAssemblyStartTimestamp(null);
 
     if (useSocketReadyFlow && socket.connected && currentPlayerNumber) {
       socket.emit(
@@ -624,6 +630,7 @@ function App() {
       setRoomPlayers(room.players);
       setDuelResult(null);
       setReactionTimeMs(null);
+      setAssemblyStartTimestamp(null);
       setGameplayAssetsLoading(true);
       void ensureWeaponAssetsReady().finally(() => {
         setGameplayAssetsLoading(false);
@@ -646,14 +653,15 @@ function App() {
       }
 
       const didWin = payload.winnerPlayerNumber === currentPlayerNumber;
-      const visibleReactionTime = didWin ? payload.winnerReactionTimeMs : payload.winnerReactionTimeMs;
+      const playerCompletionTimeMs = didWin ? payload.winnerReactionTimeMs : payload.loserReactionTimeMs;
 
       setDuelResult({
         outcome: didWin ? "win" : "lose",
-        reactionTimeMs: visibleReactionTime,
+        playerCompletionTimeMs,
+        winnerCompletionTimeMs: payload.winnerReactionTimeMs,
         multiplayer: true,
       });
-      setReactionTimeMs(visibleReactionTime);
+      setReactionTimeMs(playerCompletionTimeMs);
       setCurrentPage("result");
     };
 
@@ -769,7 +777,11 @@ function App() {
             />
           )}
           {currentPage === "assembly" && (
-            <WeaponAssemblyPage setCurrentPage={setCurrentPage} setReactionTimeMs={setReactionTimeMs} />
+            <WeaponAssemblyPage
+              setCurrentPage={setCurrentPage}
+              setReactionTimeMs={setReactionTimeMs}
+              onAssemblyStart={setAssemblyStartTimestamp}
+            />
           )}
           {currentPage === "weapon-ready" && <WeaponReadyPage setCurrentPage={setCurrentPage} />}
           {currentPage === "fire" && (
@@ -777,6 +789,7 @@ function App() {
               motionPermission={motionPermission}
               roomCode={roomCode}
               useSocketFlow={useSocketReadyFlow}
+              assemblyStartTimestamp={assemblyStartTimestamp}
               setCurrentPage={setCurrentPage}
               setReactionTimeMs={setReactionTimeMs}
             />
